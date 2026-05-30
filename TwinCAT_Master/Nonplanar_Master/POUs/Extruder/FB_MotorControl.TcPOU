@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_MotorControl" Id="{27276ac3-6cb9-4e61-b07a-6dbfbc7f65b1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK INTERNAL FB_MotorControl
+VAR_INPUT
+    fSetRPM      		: LREAL		:= 0;       // Soll-Drehzahl [RPM]
+	bError_Stepper		: BOOL;					// Fehler der Klemme EL2521
+	bStepper_STALL		: BOOL;					// Stallguard aktive (Motor überlastet)
+END_VAR
+VAR_OUTPUT
+	// Status
+    bRunning       		: BOOL;					// Motor läuft
+	bError        		: BOOL;					// Fehler
+    nErrorID      		: UDINT;
+    sErrorMsg 			: STRING(80);
+	
+	// Prozessdaten
+	n_Direction			: INT		:= 16383;	// Entspricht 5 V --> Vorgegebene Drehrichtung
+	n_Enable			: INT		:= 0;		// Entspricht 0 V --> Aktiv
+	nPTO_FreqValue  	: INT		:= 0;		// PTO Control → Frequency value (Vorzeichen entspricht Richtung)
+END_VAR
+VAR
+    fRPM				: LREAL;				// Motoro RPM
+	fDisplay_RPM		: LREAL;				// HMI RPM Value
+	Powering_Off		: F_TRIG;				// Fallende Flanke --> True
+	bFirstCycle			: BOOL		:= TRUE;	// Erster Durchlauf
+	fMaxMotorRPM		: LREAL;				// Maximale RPM
+	fRatio          	: LREAL;				// Verhältnis SollRPM zu maximaler RPM [%]
+END_VAR
+VAR_IN_OUT
+	bEnable         	: BOOL;  				// Freigabe des Motors
+	bErrorReset			: BOOL;					// Fehler zurücksetzen
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// =============================================================================
+// RPM Änderung nur im ausgeschaltetem Zustand
+// =============================================================================
+Powering_Off(CLK := bEnable);
+
+IF Powering_Off.Q OR bFirstCycle THEN
+	fRPM := fSetRPM;
+END_IF
+
+// =============================================================================
+// Stallguard aktive (Motor überlastet) --> Abschalten
+// =============================================================================
+IF bStepper_STALL THEN
+	bError 			:= TRUE;
+	nErrorID        := 2001;
+    sErrorMsg       := 'Stallguard aktive (Motor überlastet)';
+END_IF
+
+// =============================================================================
+// Fehler der Klemme EL2521
+// =============================================================================
+IF bError_Stepper THEN
+	bError 			:= TRUE;
+	nErrorID        := 2004;
+    sErrorMsg       := 'Motoransteuerungsfehler: Klemme EL2521';
+END_IF
+
+// =============================================================================
+// FB_MotorControl – EL2521 Relativer Modus
+// =============================================================================
+fMaxMotorRPM := PAR_Extruder.C_MAX_RPM_SCREW * PAR_Extruder.C_GEAR_RATIO;
+
+// Fehlererkennung
+IF fSetRPM < 0 THEN
+	bError 			:= TRUE;
+	nErrorID        := 2002;
+    sErrorMsg       := 'RPM darf nicht negativ sein';
+ELSIF fSetRPM > fMaxMotorRPM THEN
+	bError 			:= TRUE;
+	nErrorID        := 2003;
+    sErrorMsg       := 'RPM überschreitet Maximalwert';
+END_IF
+
+// Verhältnis RPM zu maximaler RPM und Grenzwertbeschränkung
+fRatio := LIMIT(0, fRPM, fMaxMotorRPM) / fMaxMotorRPM;
+
+// Setzen der Drehgeschwindigkeit
+IF bEnable AND fRPM > 0.01 AND NOT bError THEN
+	// Motor aktivieren
+	n_Enable := 0;	
+	fDisplay_RPM := fRPM;
+	// Relativ: 32767 = 100% Grundfrequenz
+	nPTO_FreqValue := LREAL_TO_INT(fRatio * 32767.0);
+    bRunning       := TRUE;
+ELSE
+	// Motor deaktivieren
+	n_Enable := 16383;	
+    nPTO_FreqValue := 0;
+	fDisplay_RPM := 0;
+    bRunning       := FALSE;
+END_IF
+
+// =============================================================================
+//Drehrichtung festlegen (Retraction ist verboten)
+// =============================================================================
+
+IF NOT PAR_Extruder.C_STEPPER_DIR THEN
+	n_Direction := 16383;
+ELSE
+	n_Direction := 0;
+END_IF
+
+// =============================================================================
+//Fehler zurücksetzen
+// =============================================================================
+IF bErrorReset THEN
+    bError          := FALSE;
+    nErrorID        := 0;
+    sErrorMsg       := '';
+    bErrorReset 	:= FALSE;
+END_IF
+
+IF bFirstCycle THEN
+	bFirstCycle := FALSE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_MotorControl">
+      <LineId Id="213" Count="1" />
+      <LineId Id="212" Count="0" />
+      <LineId Id="252" Count="0" />
+      <LineId Id="244" Count="3" />
+      <LineId Id="208" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="92" Count="1" />
+      <LineId Id="95" Count="1" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="181" Count="0" />
+      <LineId Id="179" Count="1" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="173" Count="3" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="11" Count="2" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="103" Count="4" />
+      <LineId Id="109" Count="1" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="14" Count="2" />
+      <LineId Id="28" Count="2" />
+      <LineId Id="299" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="300" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="302" Count="1" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="336" Count="0" />
+      <LineId Id="36" Count="1" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="296" Count="1" />
+      <LineId Id="295" Count="0" />
+      <LineId Id="290" Count="0" />
+      <LineId Id="288" Count="1" />
+      <LineId Id="291" Count="2" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="132" Count="8" />
+      <LineId Id="258" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_HeaterZone_Parameter" Id="{7a32b6a9-3fa8-44a7-b3ad-0a2f70f2400f}">
+    <Declaration><![CDATA[TYPE ST_HeaterZone_Parameter :
+STRUCT
+    // PID-Parameter (https://docs.dyzedesign.com/pulsar.html#marlin-firmware)
+    fKp             : LREAL 	:= 1.2;       	// Proportionalverstärkung
+    fKi             : LREAL  	:= 0.015;   	// Integralverstärkung
+    fKd             : LREAL  	:= 50.0;  		// Differentialversträrkung
+    fFilterN      	: LREAL 	:= 10.0;		// Filterfaktor für DT1-Anteil des PID-Reglers (zwischen 5 und 20 --> mehr Rauschen = kleiner)
+END_STRUCT
+END_TYPE
+
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

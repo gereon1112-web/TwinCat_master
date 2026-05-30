@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_MotorControl" Id="{2dbd7633-5c4e-4fb3-8808-004f2b637cf4}">
+    <Declaration><![CDATA[TYPE ST_MotorControl :
+STRUCT
+	bEnable         	: BOOL		:= FALSE;  	// Freigabe des Motors
+	bErrorReset			: BOOL		:= FALSE;	// Fehler zurücksetzen
+	bRunning       		: BOOL;					// Motor läuft
+	bError        		: BOOL;					// Fehler
+    nErrorID      		: UDINT;
+    sErrorMsg 			: STRING(80);
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="E_NozzleSizeFlow" Id="{c363c4e0-eeb8-4631-8e62-dae07b6148a3}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+// Düsendurchmesser in mm und die zugehärige Reduzierung des maximalen Durchflusses in mm^3/s
+TYPE E_NozzleSizeFlow :
+(
+	fuenf 	:= 0,
+	vier	:= -60,
+	drei	:= -120,
+	zwei 	:= -180,
+	ein		:= -240
+)DINT := drei;
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

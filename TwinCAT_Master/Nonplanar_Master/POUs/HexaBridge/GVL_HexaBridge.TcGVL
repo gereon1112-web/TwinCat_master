@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_HexaBridge" Id="{0d544075-735b-4225-a6cd-b03b72ce1c60}">
+    <Declaration><![CDATA[{attribute 'qualified_only' := 'FALSE'}
+//  GVL_HexaBridge  -  Globale Variablen für ADS-HexaBOF-Bridge
+VAR_GLOBAL
+    // Befehlsschnittstelle
+    sCommand        : STRING(255);          // Befehlsname
+    sParameter      : STRING(1000);         // Parameter-String
+    bExecute        : BOOL;                 // Steigende Flanke = Befehl ausführen
+	bCommandSent	: BOOL;					// Befehl gesendet
+    bBusy           : BOOL;                 // Bridge verarbeitet Befehl
+    bDone           : BOOL;                 // Befehl abgeschlossen
+    bError          : BOOL;                 // Fehler aufgetreten
+    nErrorCode      : INT;                  // Fehlercode (0=OK)
+    sErrorMsg       : STRING(255);          // Fehlermeldung
+    sResult         : STRING(1000);         // Ergebnis-String
+
+    // Status
+    bHexConnected   : BOOL;                 // HexaBOF verbunden
+    bBridgeRunning  : BOOL;                 // Python-Bridge aktiv
+
+    // Direkte GEO-Strings
+    sGeoLine        : STRING(1000);         // Einzel-GEO-Zeile
+    sGeoBlock       : STRING(10000);        // GEO-Block (mehrzeilig)
+	
+	// Programm Block schreiben im Hintergrund, um diesen später auszuführen
+	sProgLine		: STRING(1000);         // Einzel-GEO-Zeile zu Programm hinzufügen
+	bProgLineReady	: BOOL;        			// Zeile bereit zum schreiben
+	bProgLineSaved	: BOOL;        			// Zeile gespeichert
+	bProgLineExecution : BOOL;        		// Blockiert das Schreiben neuer Programmzeilen beim Starten des Ausführens eines Blocks
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

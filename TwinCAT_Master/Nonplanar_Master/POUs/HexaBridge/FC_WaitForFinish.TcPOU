@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FC_WaitForFinish" Id="{9c5f6ca5-0ca0-4cf0-878a-52111cc098ad}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FC_WaitForFinish : BOOL
+VAR_INPUT
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF GVL_HexaBridge.bHexConnected AND GVL_HexaBridge.bBridgeRunning THEN
+	// Empfangen des Ergebnisses der Ausführung des Befehls
+	IF GVL_HexaBridge.bCommandSent AND NOT GVL_HexaBridge.bExecute
+	AND GVL_HexaBridge.bDone AND NOT GVL_HexaBridge.bBusy THEN
+		GVL_HexaBridge.bDone := FALSE;
+		GVL_HexaBridge.bCommandSent := FALSE;
+		IF NOT GVL_HexaBridge.bError THEN
+			FC_WaitForFinish := TRUE;
+		ELSE 
+			FC_WaitForFinish := FALSE;
+		END_IF
+	ELSIF NOT GVL_HexaBridge.bCommandSent AND NOT GVL_HexaBridge.bExecute
+	AND NOT GVL_HexaBridge.bDone AND NOT GVL_HexaBridge.bBusy THEN
+		FC_WaitForFinish := TRUE;
+	END_IF
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FC_WaitForFinish">
+      <LineId Id="19" Count="0" />
+      <LineId Id="8" Count="9" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

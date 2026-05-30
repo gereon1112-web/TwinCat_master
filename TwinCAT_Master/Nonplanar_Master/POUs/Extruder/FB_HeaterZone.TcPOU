@@ -1,0 +1,305 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_HeaterZone" Id="{285e3042-1b28-4467-8b24-8c5255a1d28e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK INTERNAL FB_HeaterZone
+VAR_INPUT
+	nTempRaw		: INT		:= 0;		// Rohwert (muss durch 10 geteilt werden)
+	fAtTempTolerance: LREAL		:= 2;		// Toleranz für bAtTemp [K]
+	
+	// PID-Abtastfaktor (Vielfaches der Task-Zykluszeit)
+    nPIDCycleFactor: UINT  		:= 10;		// PID rechnet alle n Zyklen
+
+    // PID-Tuning
+    fWarmupKp       : LREAL;   				// Proportionalverstärkung
+    fWarmupKi       : LREAL;  				// Integralverstärkung
+    fWarmupKd       : LREAL;  				// Differentialversträrkung
+
+    // Filterfaktor für DT1-Anteil des PID-Reglers
+    fWarmupFilterN  : LREAL 	:= 10.0;  	// zwischen 5 und 20 --> mehr Rauschen = kleiner
+	
+	tRampTime		: TIME;					// Einschaltrampendauer beim aktivieren
+	
+	bPrinting		:BOOL;					// Schaltete PID-Parameter um
+	
+	// PID-Tuning
+    fPrintingKp     : LREAL;   				// Proportionalverstärkung
+    fPrintingKi     : LREAL;  				// Integralverstärkung
+    fPrintingKd     : LREAL;  				// Differentialversträrkung
+
+    // Filterfaktor für DT1-Anteil des PID-Reglers
+    fPrintingFilterN: LREAL 	:= 10.0;  	// zwischen 5 und 20 --> mehr Rauschen = kleiner
+
+    // PWM-Konfiguration
+    tPWM_Period   	: TIME  	:= T#5S;  	// Lange Periode, wenig Schalten, da träges System
+END_VAR
+VAR_OUTPUT
+	fActualTemp   	: LREAL;             	// Isttemperatur [°C]
+	fPID_Output    	: LREAL;				// PID-Wert
+    bSSR_Out      	: BOOL;					// SSR Ein oder Aus
+    bAtTemp        	: BOOL;					// Temperatur erreicht
+    bError        	: BOOL;					// Fehler
+    nErrorID      	: UDINT;
+    sErrorMsg 		: STRING(80);
+END_VAR
+VAR_IN_OUT
+	bEnable         : BOOL;
+	bErrorReset		: BOOL;					// Fehler zurücksetzen
+	fSetTemp       	: LREAL;             	// Solltemperatur [°C]
+END_VAR
+VAR
+	// PID
+	fbPID               : FB_CTRL_PID;
+	stPID_Params		: ST_CTRL_PID_PARAMS;
+	eMode_PID           : E_CTRL_MODE;
+    
+	// Einschaltrampe
+	fbRampTimer				: TON;		// Timer für die Rampe
+	fStartingTemp			: LREAL;	// Starttmperatur
+	fRampIncrease			: LREAL;	// Anstieg der Rampe
+	fbFirstCycleEnable		: R_TRIG;	// Erster Durchgang nach Einschalten
+	
+	// PWM
+	fbPWM               : FB_CTRL_PWM_OUT;
+    stPWM_Params        : ST_CTRL_PWM_OUT_PARAMS;
+	eMode_PWM           : E_CTRL_MODE;
+	eState_PWM			: E_CTRL_STATE;
+	
+	// Berechnete PID-Parameter
+	tTn                 : TIME;
+    tTv                 : TIME;
+    tTd                 : TIME;
+	fKp					: LREAL;
+	
+	fSetpoint			: LREAL;
+	
+	// Timing
+    tPIDCycleTime	: TIME 	:= T#100MS;	// PID-Abtastzeit [s]
+    tTaskCycleTime	: TIME  := T#10MS;	// Task-Zykluszeit
+	nTaskIdx     	: DINT;
+    nCycleTime   	: UDINT;
+	
+    // Fehlerflags
+    bSensorError        : BOOL;
+    bOverTempError      : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// =============================================================================
+// Zykluszeiten bestimmen und für FBs umrechnen
+// =============================================================================
+nTaskIdx := GETCURTASKINDEXEX();
+IF nTaskIdx > 0 AND _TaskInfo[nTaskIdx].FirstCycle 
+THEN
+	nCycleTime := _TaskInfo[nTaskIdx].CycleTime;
+	
+	// Task-Zykluszeit für PWM
+	tTaskCycleTime := UDINT_TO_TIME(nCycleTime / 10000);
+	
+	// PID-Abtastzeit = Task-Zykluszeit × Faktor
+	tPIDCycleTime := tTaskCycleTime * nPIDCycleFactor;
+END_IF
+
+// =============================================================================
+// Kp, Ki, Kd → Tn, Tv, Td umrechnen
+// =============================================================================
+IF bPrinting THEN
+	IF fPrintingKi > 0.0 THEN
+		tTn := T#0S + LREAL_TO_TIME(fPrintingKp / fPrintingKi * 1000.0);
+	ELSE
+		tTn := T#0S;
+	END_IF
+	
+	IF fPrintingKp > 0.0 THEN
+		tTv := T#0S + LREAL_TO_TIME(fPrintingKd / fPrintingKp * 1000.0);
+	ELSE
+		tTv := T#0S;
+	END_IF
+	
+	IF fPrintingFilterN > 0.0 THEN
+		tTd := T#0S +  LREAL_TO_TIME( TIME_TO_LREAL(tTv) / fPrintingFilterN);
+	ELSE
+		tTd := T#0S + LREAL_TO_TIME( TIME_TO_LREAL(tTv) / 10.0);
+	END_IF
+	
+	fKp := fPrintingKp;
+ELSE
+	IF fWarmupKi > 0.0 THEN
+		tTn := T#0S + LREAL_TO_TIME(fWarmupKp / fWarmupKi * 1000.0);
+	ELSE
+		tTn := T#0S;
+	END_IF
+	
+	IF fWarmupKp > 0.0 THEN
+		tTv := T#0S + LREAL_TO_TIME(fWarmupKd / fWarmupKp * 1000.0);
+	ELSE
+		tTv := T#0S;
+	END_IF
+	
+	IF fWarmupFilterN > 0.0 THEN
+		tTd := T#0S +  LREAL_TO_TIME( TIME_TO_LREAL(tTv) / fWarmupFilterN);
+	ELSE
+		tTd := T#0S + LREAL_TO_TIME( TIME_TO_LREAL(tTv) / 10.0);
+	END_IF
+	
+	fKp := fWarmupKp;
+END_IF
+
+// =============================================================================
+// Temperatur umrechnen
+// =============================================================================
+fActualTemp := TO_REAL(nTempRaw)/10;
+
+// =============================================================================
+// Sensorcheck
+// =============================================================================
+bSensorError   := (fActualTemp < PAR_Extruder.C_MIN_SENSOR_TEMP) OR (fActualTemp > PAR_Extruder.C_MAX_SENSOR_TEMP);
+bOverTempError := (fActualTemp > PAR_Extruder.C_MAX_TEMP) AND NOT bSensorError;
+
+IF bSensorError THEN
+    bError    := TRUE;
+    nErrorID  := 1001;
+    sErrorMsg := 'Sensorfehler: Wert ausserhalb Bereich';
+ELSIF bOverTempError THEN
+    bError    := TRUE;
+    nErrorID  := 1002;
+    sErrorMsg := 'Uebertemperatur! Heizung abgeschaltet';
+END_IF
+
+// =============================================================================
+// Solltemperatur begrenzen
+// =============================================================================
+fSetTemp := LIMIT(PAR_Extruder.C_MIN_SET_TEMP, fSetTemp, PAR_Extruder.C_MAX_SET_TEMP);
+
+// =============================================================================
+// PID-Regler (FB_BasicPID)
+// =============================================================================
+IF bErrorReset OR NOT bEnable THEN
+	eMode_PID := eCTRL_MODE_RESET;
+ELSIF bEnable AND NOT bError THEN
+    eMode_PID := eCTRL_MODE_ACTIVE;
+ELSE
+    eMode_PID := eCTRL_MODE_PASSIVE;
+END_IF
+
+stPID_Params.tCtrlCycleTime := tPIDCycleTime;
+stPID_Params.tTaskCycleTime := tTaskCycleTime;
+stPID_Params.fKp := fKp;
+stPID_Params.tTn := tTn;
+stPID_Params.tTv := tTv;
+stPID_Params.tTd := tTd;
+stPID_Params.fOutMaxLimit := 100;
+stPID_Params.fOutMinLimit := 0;
+stPID_Params.bPInTheFeedbackPath := FALSE;
+stPID_Params.bDinTheFeedbackPath := FALSE;
+stPID_Params.bARWOnIPartOnly := FALSE;
+
+// Rampe um direkte Sprünge zu verhindern und Regler zu stabilisieren
+fbRampTimer(IN := bEnable, PT := tRampTime);
+fbFirstCycleEnable(CLK := bEnable);
+IF fbFirstCycleEnable.Q THEN
+	fStartingTemp := fActualTemp;
+	fRampIncrease := (fSetTemp - fStartingTemp)/ TIME_TO_LREAL(tRampTime);
+END_IF
+
+IF bEnable THEN
+	IF fbRampTimer.Q THEN
+		fSetpoint := fSetTemp;
+	ELSE
+		fSetpoint := TIME_TO_LREAL(fbRampTimer.ET) * fRampIncrease + fStartingTemp;
+	END_IF
+END_IF
+
+
+fbPID(
+    fSetpointValue  := fSetpoint,
+    fActualValue    := fActualTemp,
+	fManSyncValue	:= 0,
+	bSync			:= FALSE,
+	eMode			:= eMode_PID,
+	bHold			:= FALSE,
+	stParams		:= stPID_Params);
+	
+fPID_Output := fbPID.fOut;
+
+IF fbPID.bError THEN
+	bError    := TRUE;
+	nErrorID  := 1003;
+	sErrorMsg := CONCAT('PID-Regler: ', TO_STRING(fbPID.eErrorId));
+END_IF
+
+// =============================================================================
+// PWM-Ausgang (FB_CTRL_PWM_OUT)
+// =============================================================================
+IF bErrorReset THEN
+	eMode_PWM := eCTRL_MODE_RESET;
+ELSIF bEnable AND NOT bError THEN
+    eMode_PWM := eCTRL_MODE_ACTIVE;
+ELSE
+    eMode_PWM := eCTRL_MODE_PASSIVE;
+END_IF
+
+stPWM_Params.tPWMPeriod := tPWM_Period;
+stPWM_Params.tTaskCycleTime := tTaskCycleTime;
+stPWM_Params.bInstantPWMUpdate := TRUE;
+
+fbPWM(
+    fPWMInput	:= fPID_Output, // 3
+    eMode    	:= eMode_PWM,
+    stParams 	:= stPWM_Params
+);
+bSSR_Out := fbPWM.bPwmOutBitPos;
+eState_PWM := fbPWM.eState;
+
+IF fbPWM.bError THEN
+	bError := TRUE;
+	nErrorID  := 1005;
+    sErrorMsg :=CONCAT('PWM: ',TO_STRING(fbPWM.eErrorId));
+END_IF
+
+// =============================================================================
+// Temperatur erreicht und Fehlerbehandlung
+// =============================================================================
+bAtTemp := bEnable
+         AND NOT bError
+           AND (fSetTemp = 0.0 OR (fActualTemp >= fSetTemp - 1 AND fActualTemp <= fSetTemp + fAtTempTolerance));
+
+IF bError THEN
+    bSSR_Out    := FALSE;
+    bEnable		:= FALSE;
+    bAtTemp     := FALSE;
+END_IF
+
+// =============================================================================
+// Fehler zurücksetzen
+// =============================================================================
+IF bErrorReset THEN
+    bError          := FALSE;
+    nErrorID        := 0;
+    sErrorMsg       := '';
+    bErrorReset 	:= FALSE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HeaterZone">
+      <LineId Id="661" Count="107" />
+      <LineId Id="1004" Count="0" />
+      <LineId Id="989" Count="0" />
+      <LineId Id="988" Count="0" />
+      <LineId Id="997" Count="1" />
+      <LineId Id="1003" Count="0" />
+      <LineId Id="999" Count="1" />
+      <LineId Id="978" Count="0" />
+      <LineId Id="977" Count="0" />
+      <LineId Id="979" Count="0" />
+      <LineId Id="990" Count="0" />
+      <LineId Id="992" Count="0" />
+      <LineId Id="994" Count="0" />
+      <LineId Id="991" Count="0" />
+      <LineId Id="980" Count="0" />
+      <LineId Id="976" Count="0" />
+      <LineId Id="774" Count="50" />
+      <LineId Id="1086" Count="0" />
+      <LineId Id="826" Count="15" />
+      <LineId Id="311" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

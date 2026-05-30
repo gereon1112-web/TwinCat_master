@@ -1,0 +1,61 @@
+Id;Default
+892;%.0f
+505;%.0f RPM
+487;%.1f
+322;%.1f RPM
+186;%.1f °C
+777;%.2f
+451;%2.f
+735;%f
+466;%n
+339;%s
+815;%sGVL_ProgrammSequencer.Sequencer.sErrorMsg
+650;Abbrechen
+403;Datei geladen
+962;Datei laden
+83;Datei schließen
+577;Dateipfad:
+389;Druckbett Temp.
+726;Druckparameter anpassen
+669;Druckprozess abbrechen
+266;Druckprozess abgeschlossen
+786;Druckprozess fortsetzen
+898;Druckprozess kann gestartet werden
+452;Druckprozess kann gestartet werden.
+422;Druckprozess läuft
+792;Druckprozess läuft!
+88;Druckprozess pausieren
+569;Druckprozess startbereit
+40;Druckprozess starten
+183;Erfolgreich abgeschlossen
+658;Extrusion stoppen
+500;Fehler zurücksetzen
+891;Fehlerbeschreibung: %s
+841;Flow2RPM
+319;Gewähltes Material
+150;Gewähltes Material:
+273;Heizelemente aktivieren!
+63;Heizelemente freigeben
+9;Ist das Druckbett frei?
+184;Material wechseln 
+509;Materialeinstellungen
+74;Max. FlowRate
+504;Name
+1;NozzleSizeCoef
+368;Override der Extrusionsrate und Vorschubs
+853;Override der Extrusionsrate und Vorschubs:
+136;Schichtbreite
+495;Schichtbreite in mm:
+350;Schichtbreite:
+992;Schichthöhe in mm: 
+939;Schichthöhe: 
+693;Temp. Düse
+728;Temp. Middle
+586;Temp. Mitte
+916;Temp. oben
+110;Temp. Oben
+808;Temp. Top
+75;Verfahrgeschwindigkeit in mm/s:
+408;Verfahrgeschwindigkeit:
+385;Vorbereitung
+668;zurück

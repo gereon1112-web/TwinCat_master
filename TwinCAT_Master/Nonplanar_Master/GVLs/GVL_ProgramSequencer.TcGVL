@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_ProgramSequencer" Id="{f0a3e50a-754c-465d-b418-5f8d246730d2}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	Sequencer		: ST_ProgramSequencer := (sPath := 'C:\Users\Gereon\Desktop\MotionInterface\testpaths\testpath.geo'); 
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

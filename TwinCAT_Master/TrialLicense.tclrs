@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<TcLicenseInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2011/11/TcLicenseInfo">
+	<LicenseInfo>
+		<SystemId>{5611435F-299B-89DB-1046-5754077AFB77}</SystemId>
+		<IssueTime>2026-05-13T09:31:00</IssueTime>
+		<ExpireTime>2026-05-21T00:00:00</ExpireTime>
+		<LicenseKey>af7e3694a7b0368bd26946c7adcd4d992153e9aa24b51410340c2eae1248ee1cc23226df56d282a657a52fc1ad55167c1d74b9124eb44bf7b2320ff2c580610ffbfa2e8df7135b7b1bc5fcf4c0fe72bfc44753f8c04922046529aade1cc6a2c793b173dc4788407215640b04c052d1820de7ba1e4d5afd34eb27a046a8fe1d4e174384e1b26d48456233de8b96681ac7701b7a83aa121b5a3c7830972e58b76c549c78a3965e7cd78905f67d7c0237b4232ed92f2c1d4fd3156449d3528837878f75ba14fc77d9cb846dfd1feb9f9b61c1484a719938101c7c99205552f322eed16ebd5d9cdcac8d0a07bdfbb5ef6c21dafdf847d7a1040dbf47bbcea020b1dd</LicenseKey>
+		<License>
+			<LicenseId>{4C256767-E6E6-4AF5-BD68-9F7ABAD0C200}</LicenseId>
+			<Name>TC3 ADS</Name>
+			<OrderNo>TC1000</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{3FF18E97-7754-401B-93FB-70544DE28A13}</LicenseId>
+			<Name>TC3 IO</Name>
+			<OrderNo>TC1100</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{66689887-CCBD-452C-AC9A-039D997C6E66}</LicenseId>
+			<Name>TC3 PLC</Name>
+			<OrderNo>TC1200</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{777F1598-583B-4503-99BB-7C02E0ABD97E}</LicenseId>
+			<Name>TC3 Controller Toolbox</Name>
+			<OrderNo>TF4100</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{D4390DEA-A64D-494D-9E09-275326DBB0CB}</LicenseId>
+			<Name>TC3 PLC-HMI (RT)</Name>
+		</License>
+		<License>
+			<LicenseId>{FDE02854-39A7-440C-9EAE-C234A16A3CED}</LicenseId>
+			<Name>TC3 PLC-HMI</Name>
+			<OrderNo>TF1800</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{BDCC0070-42D5-49AE-ABF1-1D4434813D60}</LicenseId>
+			<Name>TC3 OPC-UA</Name>
+			<OrderNo>TF6100</OrderNo>
+		</License>
+		<License>
+			<LicenseId>{1601B55A-B68B-4C5B-9A42-31E9CA63F286}</LicenseId>
+			<Name>TC3 OPC-DA</Name>
+			<OrderNo>TF6120</OrderNo>
+		</License>
+	</LicenseInfo>
+</TcLicenseInfo>

@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FC_ExecuteNoWait" Id="{d242c14e-0e74-4125-9d1b-d7fbccdda005}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FC_ExecuteNoWait : BOOL
+VAR_INPUT
+	sCommand			: STRING(MAX_STRING_LENGTH);	// Befehl
+	sParam				: STRING(MAX_STRING_LENGTH);	// Parameter
+END_VAR
+VAR
+	sCommandTrimmed		: STRING(MAX_STRING_LENGTH);	// Entfernt Leerzeichen
+	sParamTrimmed		: STRING(MAX_STRING_LENGTH);	// Entfernt Leerzeichen
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF GVL_HexaBridge.bHexConnected AND GVL_HexaBridge.bBridgeRunning THEN
+	// Vorheriger Befehl ausgeführt?
+	IF GVL_HexaBridge.bCommandSent AND NOT GVL_HexaBridge.bExecute
+	AND GVL_HexaBridge.bDone AND NOT GVL_HexaBridge.bBusy THEN
+		GVL_HexaBridge.bDone := FALSE;
+		GVL_HexaBridge.bCommandSent := FALSE;
+	END_IF
+
+	// Senden des Befehls
+	IF NOT GVL_HexaBridge.bDone AND NOT GVL_HexaBridge.bBusy
+	AND NOT GVL_HexaBridge.bCommandSent AND NOT GVL_HexaBridge.bExecute THEN
+
+		// Befehl senden
+		sCommandTrimmed := F_LTRIM(F_RTRIM(sCommand));
+		sParamTrimmed := F_LTRIM(F_RTRIM(sParam));
+		GVL_HexaBridge.sCommand := sCommandTrimmed;
+		GVL_HexaBridge.sGeoLine := sParamTrimmed;
+		GVL_Hexabridge.bExecute := TRUE;
+		GVL_HexaBridge.bCommandSent := TRUE;
+		
+		// Ausgang
+		IF NOT GVL_HexaBridge.bError THEN
+			FC_ExecuteNoWait := TRUE;
+		ELSE 
+			FC_ExecuteNoWait := FALSE;
+		END_IF
+	END_IF
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FC_ExecuteNoWait">
+      <LineId Id="8" Count="12" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="24" Count="9" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

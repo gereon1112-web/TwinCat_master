@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_PrintingBed" Id="{ccb70eb2-a468-4628-ae77-1cc016a63a53}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	PrintingBed		: ST_PrintingBed;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

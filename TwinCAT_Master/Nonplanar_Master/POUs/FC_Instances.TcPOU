@@ -1,0 +1,226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FC_Instances" Id="{24fadc25-913a-4aa8-9ee9-bd4c3f715ed4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FC_Instances : BOOL
+VAR_INPUT
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Befehlsverarbeitung
+Sequencer(
+	sPath			:= GVL_ProgramSequencer.Sequencer.sPath,
+	bPelletsEmpty	:= GVL_HardwareExtruder.I_PelletsEmpty,
+	bReady 			=> GVL_ProgramSequencer.Sequencer.bReady,
+	bPrinting 		=> GVL_ProgramSequencer.Sequencer.bPrinting,
+	bFinished		=> GVL_ProgramSequencer.Sequencer.bFinished,
+	bError        	=> GVL_ProgramSequencer.Sequencer.bError,
+	nErrorID      	=> GVL_ProgramSequencer.Sequencer.nErrorID,
+	sErrorMsg 		=> GVL_ProgramSequencer.Sequencer.sErrorMsg,
+	bHeatersEnabled	:= GVL_ProgramSequencer.Sequencer.bHeatersEnabled,
+	bPrintBedClear	:= GVL_ProgramSequencer.Sequencer.bPrintBedClear,
+	bChangeMaterial	:= GVL_ProgramSequencer.Sequencer.bChangeMaterial,
+	bChangeMaterialFinished := GVL_ProgramSequencer.Sequencer.bChangeMaterialFinished,
+	bLoadFile		:= GVL_ProgramSequencer.Sequencer.bLoadFile,
+	bCloseFile		:= GVL_ProgramSequencer.Sequencer.bCloseFile,
+	bStart 			:= GVL_ProgramSequencer.Sequencer.bStart,
+	bAbort 			:= GVL_ProgramSequencer.Sequencer.bAbort,
+	bPause          := GVL_ProgramSequencer.Sequencer.bPause,
+	bResume         := GVL_ProgramSequencer.Sequencer.bResume,
+	bErrorReset 	:= GVL_ProgramSequencer.Sequencer.bErrorReset);
+
+// Druckbett
+PrintingBed(
+	bErrorReset		:= GVL_PrintingBed.PrintingBed.bErrorReset,
+	bError			=> GVL_PrintingBed.PrintingBed.bError,
+	nErrorID		=> GVL_PrintingBed.PrintingBed.nErrorID,
+	sErrorMsg		=> GVL_PrintingBed.PrintingBed.sErrorMsg);
+
+// Extruder	
+ExtruderControl(
+	bErrorReset		:= GVL_Extruder.Extruder.bErrorReset,
+	bHeatersEnabled := GVL_ProgramSequencer.Sequencer.bHeatersEnabled,
+	bReady			=> GVL_Extruder.Extruder.bReady,
+	bExtruding		=> GVL_Extruder.Extruder.bExtruding,
+	bHeatingActiv	=> GVL_Extruder.Extruder.bHeatingActiv,
+	bError			=> GVL_Extruder.Extruder.bError,
+	nErrorID      	=> GVL_Extruder.Extruder.nErrorID,
+    sErrorMsg 		=> GVL_Extruder.Extruder.sErrorMsg,
+	bStartHeater	:= GVL_Extruder.Extruder.bStartHeater,
+	bStopHeater		:= GVL_Extruder.Extruder.bStopHeater,
+	bStart			:= GVL_Extruder.Extruder.bStart,
+	bStop			:= GVL_Extruder.Extruder.bStop);	
+
+// Heizelemente
+HeaterTop(
+	bEnable			:= GVL_Extruder.HeaterTop.bEnabled,
+    fSetTemp		:= GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fTempTop,
+	fPID_Output     => GVL_Extruder.HeaterTop.fPID_Output,
+	bAtTemp         => GVL_Extruder.HeaterTop.bAtTemp,
+    bErrorReset		:= GVL_Extruder.HeaterTop.bErrorReset,
+    bError        	=> GVL_Extruder.HeaterTop.bError,
+    nErrorID      	=> GVL_Extruder.HeaterTop.nErrorID,
+    sErrorMsg 		=> GVL_Extruder.HeaterTop.sErrorMsg,
+	fWarmupKp       := GVL_ParameterExtruder.WarmupHeaterTop.fKp,
+	fWarmupKi       := GVL_ParameterExtruder.WarmupHeaterTop.fKi,
+	fWarmupKd       := GVL_ParameterExtruder.WarmupHeaterTop.fKd,
+	fWarmupFilterN 	:= GVL_ParameterExtruder.WarmupHeaterTop.fFilterN,
+	bPrinting		:= GVL_Extruder.Extruder.bExtruding,
+	fPrintingKp     := GVL_ParameterExtruder.PrintingHeaterTop.fKp,
+	fPrintingKi     := GVL_ParameterExtruder.PrintingHeaterTop.fKi,
+	fPrintingKd     := GVL_ParameterExtruder.PrintingHeaterTop.fKd,
+	fPrintingFilterN:= GVL_ParameterExtruder.PrintingHeaterTop.fFilterN,
+	tRampTime		:= GVL_ParameterExtruder.tRampTime,
+	nPIDCycleFactor	:= GVL_ParameterExtruder.nPIDCycleFactor,
+	tPWM_Period     := GVL_ParameterExtruder.tPWM_Period,
+	fAtTempTolerance:= GVL_ParameterExtruder.fAtTempTolerance,
+	nTempRaw		:= GVL_HardwareExtruder.I_TempRaw_Top,
+	fActualTemp		=> GVL_Extruder.HeaterTop.fActualTemp,
+	bSSR_Out		=> GVL_HardwareExtruder.Q_SSR_Top);
+
+HeaterMiddle(
+	bEnable			:= GVL_Extruder.HeaterMiddle.bEnabled,
+    fSetTemp		:= GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fTempMiddle,
+	fPID_Output     => GVL_Extruder.HeaterMiddle.fPID_Output,
+	bAtTemp         => GVL_Extruder.HeaterMiddle.bAtTemp,
+    bErrorReset		:= GVL_Extruder.HeaterMiddle.bErrorReset,
+    bError        	=> GVL_Extruder.HeaterMiddle.bError,
+    nErrorID      	=> GVL_Extruder.HeaterMiddle.nErrorID,
+    sErrorMsg 		=> GVL_Extruder.HeaterMiddle.sErrorMsg,
+	fWarmupKp       := GVL_ParameterExtruder.WarmupHeaterMiddle.fKp,
+	fWarmupKi       := GVL_ParameterExtruder.WarmupHeaterMiddle.fKi,
+	fWarmupKd       := GVL_ParameterExtruder.WarmupHeaterMiddle.fKd,
+	fWarmupFilterN 	:= GVL_ParameterExtruder.WarmupHeaterMiddle.fFilterN,
+	bPrinting		:= GVL_Extruder.Extruder.bExtruding,
+	fPrintingKp     := GVL_ParameterExtruder.PrintingHeaterMiddle.fKp,
+	fPrintingKi     := GVL_ParameterExtruder.PrintingHeaterMiddle.fKi,
+	fPrintingKd     := GVL_ParameterExtruder.PrintingHeaterMiddle.fKd,
+	fPrintingFilterN:= GVL_ParameterExtruder.PrintingHeaterMiddle.fFilterN,
+	tRampTime		:= GVL_ParameterExtruder.tRampTime,
+	nPIDCycleFactor	:= GVL_ParameterExtruder.nPIDCycleFactor,  
+	tPWM_Period     := GVL_ParameterExtruder.tPWM_Period,      
+	fAtTempTolerance:= GVL_ParameterExtruder.fAtTempTolerance,
+	nTempRaw		:= GVL_HardwareExtruder.I_TempRaw_Middle,
+	fActualTemp		=> GVL_Extruder.HeaterMiddle.fActualTemp,
+	bSSR_Out		=> GVL_HardwareExtruder.Q_SSR_Middle);
+		
+HeaterNozzle(
+	bEnable			:= GVL_Extruder.HeaterNozzle.bEnabled,
+    fSetTemp		:= GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fTempNozzle,
+	fPID_Output     => GVL_Extruder.HeaterNozzle.fPID_Output,
+	bAtTemp         => GVL_Extruder.HeaterNozzle.bAtTemp,
+    bErrorReset		:= GVL_Extruder.HeaterNozzle.bErrorReset,
+    bError        	=> GVL_Extruder.HeaterNozzle.bError,
+    nErrorID      	=> GVL_Extruder.HeaterNozzle.nErrorID,
+    sErrorMsg 		=> GVL_Extruder.HeaterNozzle.sErrorMsg,
+	fWarmupKp       := GVL_ParameterExtruder.WarmupHeaterNozzle.fKp,
+	fWarmupKi       := GVL_ParameterExtruder.WarmupHeaterNozzle.fKi,
+	fWarmupKd       := GVL_ParameterExtruder.WarmupHeaterNozzle.fKd,
+	fWarmupFilterN 	:= GVL_ParameterExtruder.WarmupHeaterNozzle.fFilterN,
+	bPrinting		:= GVL_Extruder.Extruder.bExtruding,
+	fPrintingKp     := GVL_ParameterExtruder.PrintingHeaterNozzle.fKp,
+	fPrintingKi     := GVL_ParameterExtruder.PrintingHeaterNozzle.fKi,
+	fPrintingKd     := GVL_ParameterExtruder.PrintingHeaterNozzle.fKd,
+	fPrintingFilterN:= GVL_ParameterExtruder.PrintingHeaterNozzle.fFilterN,
+	tRampTime		:= GVL_ParameterExtruder.tRampTime,
+	nPIDCycleFactor	:= GVL_ParameterExtruder.nPIDCycleFactor,  
+	tPWM_Period     := GVL_ParameterExtruder.tPWM_Period,      
+	fAtTempTolerance:= GVL_ParameterExtruder.fAtTempTolerance,
+	nTempRaw		:= GVL_HardwareExtruder.I_TempRaw_Nozzle,
+	fActualTemp		=> GVL_Extruder.HeaterNozzle.fActualTemp,
+	bSSR_Out		=> GVL_HardwareExtruder.Q_SSR_Nozzle);
+
+//Motor
+ExtruderMotor(
+	bEnable			:= GVL_Extruder.ExtruderMotor.bEnable,
+	bErrorReset		:= GVL_Extruder.ExtruderMotor.bErrorReset,
+	fSetRPM			:= GVL_ParameterExtruder.fMotorRPM,
+	bError_Stepper	:= GVL_HardwareExtruder.I_Stepper.bError,
+	bStepper_STALL	:= GVL_HardwareExtruder.I_Stepper.bStallguardActive,
+	bRunning		=> GVL_Extruder.ExtruderMotor.bRunning,
+	bError			=> GVL_Extruder.ExtruderMotor.bError,
+	nErrorID		=> GVL_Extruder.ExtruderMotor.nErrorID,
+	sErrorMsg		=> GVL_Extruder.ExtruderMotor.sErrorMsg,
+	nPTO_FreqValue	=> GVL_HardwareExtruder.Q_Stepper.nFrequencyValue,
+	n_Direction		=> GVL_HardwareExtruder.Q_Stepper.nDirection,
+	n_Enable		=> GVL_HardwareExtruder.Q_Stepper.nEnable);]]></ST>
+    </Implementation>
+    <LineIds Name="FC_Instances">
+      <LineId Id="11" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="153" Count="5" />
+      <LineId Id="161" Count="1" />
+      <LineId Id="208" Count="1" />
+      <LineId Id="163" Count="6" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="181" Count="1" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="134" Count="2" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="148" Count="1" />
+      <LineId Id="139" Count="3" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="40" Count="3" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="49" Count="1" />
+      <LineId Id="250" Count="0" />
+      <LineId Id="231" Count="2" />
+      <LineId Id="230" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="126" Count="1" />
+      <LineId Id="217" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="57" Count="9" />
+      <LineId Id="234" Count="3" />
+      <LineId Id="249" Count="0" />
+      <LineId Id="238" Count="2" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="71" Count="1" />
+      <LineId Id="118" Count="1" />
+      <LineId Id="216" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="73" Count="9" />
+      <LineId Id="241" Count="3" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="245" Count="2" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="87" Count="1" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="215" Count="0" />
+      <LineId Id="117" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="99" Count="1" />
+      <LineId Id="202" Count="0" />
+      <LineId Id="194" Count="0" />
+      <LineId Id="102" Count="3" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="223" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

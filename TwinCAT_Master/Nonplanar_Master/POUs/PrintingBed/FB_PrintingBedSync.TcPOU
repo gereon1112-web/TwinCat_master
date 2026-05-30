@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_PrintingBedSync" Id="{e2408a13-d36e-4f00-bb95-a396dbbcb0b1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_PrintingBedSync
+VAR_INPUT
+	bErrorReset		: BOOL;
+END_VAR
+VAR_OUTPUT
+	// Statusinformationen
+	bError        	: BOOL;				// Fehler
+    nErrorID      	: UDINT;
+    sErrorMsg 		: STRING(80);
+END_VAR
+VAR
+	// ADS-Kommunikation
+    fbReadADS_AtTemp	: FB_ReadAdsSymByName;
+	fbReadADS_ActTemp	: FB_ReadAdsSymByName;
+	fbWriteADS_SetTemp	: FB_WriteAdsSymByName;
+
+    // Konfiguration
+    sRemoteNetID		: T_AmsNetId 	:= '172.16.6.70.1.1'; 	// Ziel-AMS-NetID
+    sRemotePort 		: T_AmsPort		:= 856; 				// Hexapod PLC
+	tTimeout			: TIME			:= T#5S;				// Zeit bis zu ADS Timeout
+	
+	// Temp
+	nADSErrorID			: UDINT;
+	bReadBusy_AtTemp	: BOOL;
+	bReadBusy_ActTemp	: BOOL;
+	bWriteBusy_SetTemp	: BOOL;
+	bError_AtTemp		: BOOL;
+	bError_ActTemp		: BOOL;
+	bError_SetTemp		: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT bError OR bErrorReset THEN
+fbReadADS_AtTemp(
+	bRead			:= NOT bReadBusy_AtTemp,
+	sNetId			:= sRemoteNetID,
+	nPort			:= sRemotePort,
+	sVarName		:= 'GVL_PrintingBed.Druckbett_T_valid',
+	nLen			:= SIZEOF(GVL_PrintingBed.PrintingBed.bAtTemp),
+	nDestAddr		:= ADR(GVL_PrintingBed.PrintingBed.bAtTemp),
+	tTimeout		:= tTimeout,
+	eComMode		:= E_AdsComMode.eAdsComModeFastCom,
+	bClearOnError	:= bErrorReset,
+	bBusy			=> bReadBusy_AtTemp,
+	bError			=> bError_AtTemp,
+	nErrorId		=> nADSErrorID);
+
+fbReadADS_ActTemp(
+	bRead			:= NOT bReadBusy_ActTemp,
+	sNetId			:= sRemoteNetID,
+	nPort			:= sRemotePort,
+	sVarName		:= 'GVL_PrintingBed.Druckbett_Tist',
+	nLen			:= SIZEOF(GVL_PrintingBed.PrintingBed.fActualTemp),
+	nDestAddr		:= ADR(GVL_PrintingBed.PrintingBed.fActualTemp),
+	tTimeout		:= tTimeout,
+	eComMode		:= E_AdsComMode.eAdsComModeFastCom,
+	bClearOnError	:= bErrorReset,
+	bBusy			=> bReadBusy_ActTemp,
+	bError			=> bError_ActTemp,
+	nErrorId		=> nADSErrorID);
+
+fbWriteADS_SetTemp(
+	bWrite			:= NOT bWriteBusy_SetTemp,
+	sNetId			:= sRemoteNetID,
+	nPort			:= sRemotePort,
+	sVarName		:= 'GVL_PrintingBed.Druckbett_Tsoll',
+	nLen			:= SIZEOF(GVL_PrintingBed.PrintingBed.fSetTemp),
+	nSrcAddr		:= ADR(GVL_PrintingBed.PrintingBed.fSetTemp),
+	tTimeout		:= tTimeout,
+	eComMode		:= E_AdsComMode.eAdsComModeFastCom,
+	bBusy			=> bWriteBusy_SetTemp,
+	bError			=> bError_SetTemp,
+	nErrorId		=> nADSErrorID);
+END_IF
+
+bError := bError_AtTemp OR bError_ActTemp OR bError_SetTemp;
+
+IF bErrorReset AND NOT bError THEN
+	bErrorReset := FALSE;
+	nErrorID := 0;
+	sErrorMsg := '';
+END_IF
+
+IF bError THEN
+	nErrorID := 4000;
+	sErrorMsg := CONCAT('ADS Fehler: ', TO_STRING(nADSErrorID));
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_PrintingBedSync">
+      <LineId Id="9" Count="0" />
+      <LineId Id="310" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="238" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="243" Count="0" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="248" Count="1" />
+      <LineId Id="253" Count="0" />
+      <LineId Id="180" Count="1" />
+      <LineId Id="254" Count="0" />
+      <LineId Id="256" Count="11" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="268" Count="0" />
+      <LineId Id="270" Count="8" />
+      <LineId Id="280" Count="1" />
+      <LineId Id="198" Count="0" />
+      <LineId Id="282" Count="0" />
+      <LineId Id="320" Count="0" />
+      <LineId Id="319" Count="0" />
+      <LineId Id="312" Count="2" />
+      <LineId Id="321" Count="1" />
+      <LineId Id="315" Count="0" />
+      <LineId Id="311" Count="0" />
+      <LineId Id="185" Count="1" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="187" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

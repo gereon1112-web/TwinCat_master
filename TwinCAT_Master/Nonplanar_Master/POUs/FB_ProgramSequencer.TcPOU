@@ -1,0 +1,968 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_ProgramSequencer" Id="{26d9ad15-9cd6-4103-ac10-67dcef103c3e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ProgramSequencer
+VAR_INPUT
+	sPath			: STRING(MAX_STRING_LENGTH);// Pfad des Speicherorts des GeoCodes
+	bPelletsEmpty	: BOOL;						// Feeding System meldet, dass keine Pellets am Extruder ankommen
+END_VAR
+VAR_OUTPUT
+	// Statusinformationen
+	bReady 			: BOOL;						// Betriebsbereit
+	bPrinting 		: BOOL;						// Druckprozess läuft
+	bFinished		: BOOL;						// Druck abgeschlossen
+	bError        	: BOOL;						// Fehler
+    nErrorID      	: UDINT;
+    sErrorMsg 		: STRING(80);
+END_VAR
+VAR
+	// Zustandsmaschine
+	eState			: E_StateSequencer := E_StateSequencer.OFF;	// Zustand
+	eLastState		: E_StateSequencer := E_StateSequencer.OFF; // Vorheriger zustand
+	bFirstRunState	: BOOL;						// Erster Durchlauf des Zusands nach einem Zusandswechsel
+	
+	// Dateiverarbeitung
+	fbOpenFile		: FB_FileOpen;
+	fbReadFile		: FB_FileGets;
+	fbCloseFile		: FB_FileClose;
+	hFile  			: UINT;						// file handle
+	bFileLoaded		: BOOL;						// Datei geladen
+	sLine 			: STRING(MAX_STRING_LENGTH);// Speicher für die gelesene Zeile
+	sLineTrimmed	: STRING(MAX_STRING_LENGTH);
+	
+	// Programmablauf
+	bProgBlockStart			: BOOL;				// Erster Befehl des Programmblocks
+	bBlockWithExt			: BOOL;				// Extruder in Programmblock aktiv
+	bStopExtOnBlockEnd 		: BOOL;				// Extruder am Blockende ausschalten
+	bBackToExtruderOn2	 	: BOOL;				// Rücksprung nach Anhalten des Extruders
+	bBackToPause			: BOOL;				// Rücksprung nach Anhalten des Extruders
+	
+	// Änderung Vorschubgeschwindigkeit
+	fFeed			: LREAL;
+	fTravelFeed		: LREAL;
+	bDryRun: BOOL := TRUE;
+END_VAR
+VAR_IN_OUT
+	// Steuersignale
+	bHeatersEnabled	: BOOL;						// Heizelemente aktiviert
+	bPrintBedClear	: BOOL;						// Druckbett frei?
+	bChangeMaterial	: BOOL;						// Extruder starten für Materialwechsel
+	bChangeMaterialFinished : BOOL;				// Materialwechsel abschliesen und Extruder anhalten
+	bLoadFile		: BOOL;						// File laden
+	bCloseFile		: BOOL;						// File schließen
+	bStart 			: BOOL;						// Start-Befehl
+	bAbort 			: BOOL;						// Drucken abbrechen
+	bPause          : BOOL;						// Pausiert Druckprozess
+	bResume         : BOOL;						// Druckprozess fortsetzen
+	bErrorReset 	: BOOL;						// Reset-Befehl für Fehler
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Schritte: DUTs/E_StateSequencer
+
+// =============================================================================
+// Zustandsmaschine
+// =============================================================================
+IF eLastState <> eState THEN
+	bFirstRunState := TRUE;
+ELSE
+	bFirstRunState := FALSE;
+END_IF
+eLastState := eState;
+
+// =============================================================================
+// Funktionsabhängigkeiten
+// =============================================================================
+IF bPelletsEmpty THEN
+	bPause := TRUE;
+	sErrorMsg := 'Feeding System meldet, dass keine Pellets am Extruder ankommen';
+END_IF
+
+IF bAbort OR bPause THEN
+	bStart := FALSE;
+END_IF
+
+IF NOT bHeatersEnabled THEN
+	GVL_Extruder.Extruder.bStopHeater := TRUE;
+END_IF
+
+IF bResume THEN
+	bPause := FALSE;
+END_IF
+
+GVL_HardwareExtruder.Q_Activate_Heaters := bHeatersEnabled;
+
+// =============================================================================
+// Fehlerbahandlung
+// =============================================================================
+
+// Da absolut nichts angeschlossen ist, zwingen wir im Trockenlauf ALLE 
+// Hardware-Komponenten auf "fehlerfrei" und "betriebsbereit"!
+IF bDryRun THEN
+	
+	// A. HexaBridge Spoofing
+	GVL_HexaBridge.bError := FALSE;
+	GVL_HexaBridge.nErrorCode := 0;
+	GVL_HexaBridge.sErrorMsg := '';
+	GVL_HexaBridge.bHexConnected := TRUE;
+	GVL_HexaBridge.bBridgeRunning := TRUE;
+	
+	// B. Extruder Spoofing (Fehlerfrei & sofort heiß)
+	GVL_Extruder.Extruder.bError := FALSE;
+	GVL_Extruder.Extruder.nErrorID := 0;
+	GVL_Extruder.Extruder.sErrorMsg := '';
+	GVL_Extruder.Extruder.bReady := TRUE;
+	// Wenn TwinCAT heizen will, tun wir so, als wäre er sofort heiß:
+	IF bHeatersEnabled THEN 
+		GVL_Extruder.Extruder.bHeatingActiv := TRUE; 
+	END_IF
+
+	// C. Druckbett Spoofing (Fehlerfrei & Zieltemperatur erreicht)
+	GVL_PrintingBed.PrintingBed.bError := FALSE;
+	GVL_PrintingBed.PrintingBed.nErrorID := 0;
+	GVL_PrintingBed.PrintingBed.sErrorMsg := '';
+	// Wenn eine Zieltemperatur > 0 gesetzt wird, geben wir sofort das "Ist warm!" Signal:
+	IF GVL_PrintingBed.PrintingBed.fSetTemp > 0.0 THEN
+		GVL_PrintingBed.PrintingBed.bAtTemp := TRUE;
+	ELSE
+		GVL_PrintingBed.PrintingBed.bAtTemp := FALSE;
+	END_IF
+
+END_IF
+
+
+// Fehler zurücksetzen
+IF bErrorReset AND bError THEN
+	GVL_Extruder.Extruder.bErrorReset := TRUE;
+	GVL_PrintingBed.PrintingBed.bErrorReset := TRUE;
+	
+	// HexaBridge reset
+	GVL_HexaBridge.bExecute := FALSE;
+	GVL_HexaBridge.bError := FALSE;
+	GVL_HexaBridge.nErrorCode := 0;
+	GVL_HexaBridge.sErrorMsg := '';
+	
+	bErrorReset := FALSE;
+	bError := FALSE;
+	nErrorID := 0;
+	sErrorMsg := '';
+ELSIF bErrorReset AND NOT bError THEN
+	sErrorMsg := '';
+END_IF
+
+// Fehler zusammenführen
+bError := bError 
+	OR GVL_Extruder.Extruder.bError
+	OR GVL_HexaBridge.bError
+	OR GVL_PrintingBed.PrintingBed.bError;
+
+// Fehlernachrichten zusammenführen
+IF bError THEN
+	IF GVL_Extruder.Extruder.bError			THEN nErrorID := GVL_Extruder.Extruder.nErrorID; END_IF
+	IF GVL_HexaBridge.bError				THEN nErrorID := TO_UDINT(GVL_Hexabridge.nErrorCode); END_IF
+	IF GVL_PrintingBed.PrintingBed.bError	THEN nErrorID := GVL_PrintingBed.PrintingBed.nErrorID; END_IF
+	
+	IF GVL_Extruder.Extruder.bError			THEN sErrorMsg := GVL_Extruder.Extruder.sErrorMsg; END_IF
+	IF GVL_HexaBridge.bError				THEN sErrorMsg := GVL_Hexabridge.sErrorMsg; END_IF
+	IF GVL_PrintingBed.PrintingBed.bError	THEN sErrorMsg := GVL_PrintingBed.PrintingBed.sErrorMsg; END_IF
+END_IF
+
+// Zusandswechsel im Fehlerfall
+IF bError AND NOT (eState = E_StateSequencer.IDLE 
+				OR eState = E_StateSequencer.OFF 
+				OR eState = E_StateSequencer.READY
+				OR eState = E_StateSequencer.SHUTDOWN) THEN
+	IF eState < E_StateSequencer.IDLE THEN
+		eState := E_StateSequencer.OFF;
+	ELSIF eState > E_StateSequencer.READY AND eState < E_StateSequencer.ABORTED THEN
+		GVL_Extruder.Extruder.bStopHeater := TRUE;
+		bHeatersEnabled := FALSE;
+		bAbort := TRUE;
+		eState := E_StateSequencer.ABORTED;
+	END_IF
+END_IF
+
+IF (NOT GVL_Hexabridge.bBridgeRunning OR NOT GVL_Hexabridge.bHexConnected)
+AND eState >= E_StateSequencer.READY THEN
+	eState := E_StateSequencer.OFF;
+	bError := TRUE;
+	sErrorMsg := 'HexaBridge ist nicht verbunden!';
+END_IF
+
+// =============================================================================
+// Status
+// =============================================================================
+bPrinting := GVL_Extruder.Extruder.bExtruding OR GVL_Extruder.Extruder.bReady;
+
+// =============================================================================
+// Vorschubgeschwindigkeit
+// =============================================================================
+fFeed := GVL_ParameterExtruder.fMaximumSpeed;
+fTravelFeed := GVL_ParameterExtruder.fTravelSpeed;
+
+// =============================================================================
+// Zustandsmaschine
+// =============================================================================
+CASE eState OF
+	// =============================================================================
+	E_StateSequencer.OFF : // Ausgeschaltet
+	// =============================================================================
+		// Alles aus
+		GVL_Extruder.Extruder.bStartHeater := FALSE;
+		GVL_Extruder.Extruder.bStopHeater := TRUE;
+		GVL_Extruder.Extruder.bStart := FALSE;
+		GVL_Extruder.Extruder.bStop := TRUE;
+		GVL_PrintingBed.PrintingBed.fSetTemp := 0.0;
+	
+		// Status
+		bReady := FALSE;
+		
+		IF NOT bError THEN
+			eState := E_StateSequencer.INIT_1;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.INIT_1: // Initialisierung
+	// =============================================================================
+		IF GVL_HexaBridge.bHexConnected AND GVL_HexaBridge.bBridgeRunning THEN
+			eState := E_StateSequencer.INIT_2;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.INIT_2: // Koordinatensystem setzen
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','SK Extruder') THEN
+			eState := E_StateSequencer.INIT_3;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.INIT_3: // Kardanwinkel auswählen
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','NF 2') THEN
+			eState := E_StateSequencer.HOMING_1;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.HOMING_1: // Verfahrgeschwindigkeit setzen
+	// =============================================================================
+		IF FC_Execute('GEO_LINE',CONCAT('VF ',TO_STRING(fTravelFeed * 60))) THEN // Vorschub [mm/min]
+			eState := E_StateSequencer.HOMING_2;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.HOMING_2: // Home Position anfahren (Einfahren)
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','PU') THEN
+			eState := E_StateSequencer.IDLE;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.IDLE : // Idle (Keine Datei geöffnet)
+	// =============================================================================
+		// Alles aus
+		GVL_Extruder.Extruder.bStartHeater := FALSE;
+		GVL_Extruder.Extruder.bStart := FALSE;
+	
+		// Status
+		bReady := FALSE;
+		
+		IF bChangeMaterial THEN
+			eState := E_StateSequencer.CHANGE_MATERIAL_1;
+		ELSIF bFileLoaded THEN 
+			eState := E_StateSequencer.READY;
+		ELSIF bLoadFile THEN
+			eState := E_StateSequencer.OPEN_FILE;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.OPEN_FILE : // File öffnen
+	// =============================================================================
+		IF bFirstRunState THEN
+			fbOpenFile(
+				sNetId := '', 
+				sPathName := sPath, 
+				nMode := FOPEN_MODEREAD, 
+				bExecute := TRUE, 
+				tTimeout := T#5S);
+		ELSE
+			fbOpenFile(bExecute := FALSE);
+		END_IF
+			
+		IF fbOpenFile.bError THEN
+			bError := TRUE;
+			nErrorID := 3001;
+			sErrorMsg := 'Datei: Fehler beim oeffnen der Datei';
+		END_IF
+		
+		IF NOT bFirstRunState AND NOT fbOpenFile.bBusy AND NOT fbOpenFile.bError AND fbOpenFile.hFile <> 0 THEN
+			hFile := fbOpenFile.hFile;
+			bFileLoaded := TRUE;
+			bLoadFile := FALSE;
+			eState := E_StateSequencer.READY;
+		END_IF
+
+	// =============================================================================
+	E_StateSequencer.CLOSE_FILE : // File schließen
+	// =============================================================================
+		IF bFirstRunState AND hFile <> 0 THEN
+			fbCloseFile(
+				sNetId := '',
+  				hFile := hFile,
+				bExecute := TRUE, 
+				tTimeout := T#5S);
+		ELSE
+			fbCloseFile(bExecute := FALSE);
+		END_IF
+		
+		IF fbCloseFile.bError THEN
+			bError := TRUE;
+			nErrorID := 3002;
+			sErrorMsg := 'Datei: Fehler beim schliessen der Datei';
+		END_IF
+		
+		IF (NOT bFirstRunState AND NOT fbCloseFile.bBusy AND NOT fbCloseFile.bError) 
+		OR hFile = 0 THEN
+			hFile := 0;
+			bFileLoaded := FALSE;
+			bCloseFile := FALSE;
+			eState := E_StateSequencer.IDLE;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.CHANGE_MATERIAL_1 : // Extruder aufheizen
+	// =============================================================================
+		bChangeMaterial := FALSE;
+	
+		// Heizungen aktivieren
+		IF bHeatersEnabled THEN
+			GVL_Extruder.Extruder.bStopHeater := FALSE;
+			GVL_Extruder.Extruder.bStartHeater := TRUE;
+		END_IF
+		
+		//Status
+		bPrintBedClear := FALSE;
+		
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;		
+		ELSIF GVL_Extruder.Extruder.bReady THEN
+			eState := E_StateSequencer.CHANGE_MATERIAL_2;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.CHANGE_MATERIAL_2 : // Extrudieren bis zum Beenden
+	// =============================================================================
+		// Extruder aktivieren
+		GVL_Extruder.Extruder.bStop := FALSE;
+		GVL_Extruder.Extruder.bStart := TRUE;
+		bPrintBedClear := FALSE;
+		
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF bChangeMaterialFinished THEN
+			bChangeMaterialFinished := FALSE;
+			eState := E_StateSequencer.CHANGE_MATERIAL_3;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.CHANGE_MATERIAL_3 : // Extruder abschalten
+	// =============================================================================
+		GVL_Extruder.Extruder.bStop := TRUE;
+		GVL_Extruder.Extruder.bStopHeater := TRUE;
+		GVL_Extruder.Extruder.bStart := FALSE;
+		GVL_Extruder.Extruder.bStartHeater := FALSE;
+		IF NOT GVL_Extruder.Extruder.bExtruding THEN
+			eState := E_StateSequencer.IDLE;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.READY: // Druckbereit, Programm geöffnet
+	// =============================================================================
+		//Status
+		bReady := TRUE;
+		bFinished := FALSE;
+		
+		IF NOT bFileLoaded THEN
+			eState := E_StateSequencer.IDLE;
+		ELSIF bCloseFile AND bFileLoaded THEN
+			eState := E_StateSequencer.CLOSE_FILE;
+		ELSIF bStart AND bPrintBedClear AND bHeatersEnabled
+		AND GVL_Hexabridge.bBridgeRunning AND GVL_Hexabridge.bHexConnected THEN
+			bStart := FALSE;
+			eState := E_StateSequencer.PREP_PRINTING;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING : // Werte zurücksetzen
+	// =============================================================================
+		bProgBlockStart := TRUE;
+		bBlockWithExt := FALSE;
+		bStopExtOnBlockEnd := FALSE;
+		bBackToExtruderOn2 := FALSE;
+		bBackToPause := FALSE;
+		
+		eState := E_StateSequencer.PREP_PRINTING_HEX_1;
+		
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_1: // Koordinatensystem setzen
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','SK Extruder') THEN
+			eState := E_StateSequencer.PREP_PRINTING_HEX_2;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_2 : // Druckprozess gestartet (Hexapod Geschwindigkeit setzen)
+	// =============================================================================
+		IF FC_Execute('GEO_LINE',CONCAT('VF ',TO_STRING(fTravelFeed * 60))) THEN // Verfahrgeschwindigkeit [mm/min]
+			IF bAbort THEN
+				eState := E_StateSequencer.ABORTED;
+			ELSE
+				eState := E_StateSequencer.PREP_PRINTING_HEX_3;
+			END_IF
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_3 : // Override überschreiben, um Fehler zu verhindern
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','OV 1.0') THEN
+			IF bAbort THEN
+				eState := E_StateSequencer.ABORTED;
+			ELSE
+				eState := E_StateSequencer.PREP_PRINTING_HEX_4;
+			END_IF
+		END_IF		
+
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_4 : // Druckprozess gestartet (Hexapod auf Eckposition fahren)
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','LA 230 60 -200 0 0 0') THEN // Eckposition vorn
+			IF bAbort THEN
+				eState := E_StateSequencer.ABORTED;
+			ELSE
+				eState := E_StateSequencer.PREP_PRINTING_HEX_5;
+			END_IF
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_5 : // Druckprozess gestartet (Genauhalt deaktivieren, für flüssige Bewegungen)
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','GH 0') THEN
+			IF bAbort THEN
+				eState := E_StateSequencer.ABORTED;
+			ELSE
+				eState := E_StateSequencer.PREP_PRINTING_EXT;
+			END_IF
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_EXT : // Druckprozess gestartet (Extruder und Druckbett aufheizen)
+	// =============================================================================
+		// Heizungen aktivieren
+		IF bHeatersEnabled THEN
+			GVL_PrintingBed.PrintingBed.fSetTemp := GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fTempPrintingBed;
+			GVL_Extruder.Extruder.bStopHeater := FALSE;
+			GVL_Extruder.Extruder.bStartHeater := TRUE;
+		END_IF
+		
+		//Status
+		bReady := FALSE;
+		bPrintBedClear := FALSE;
+		
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;		
+		ELSIF GVL_Extruder.Extruder.bReady AND GVL_Extruder.Extruder.bHeatingActiv 
+		AND GVL_PrintingBed.PrintingBed.bAtTemp THEN
+			eState := E_StateSequencer.PREP_PRINTING_HEX_6;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_6 : // Buffer leeren
+	// =============================================================================
+		IF FC_Execute('CLEAR_PROG_BUFFER','') THEN 
+			IF bAbort THEN
+				eState := E_StateSequencer.ABORTED;
+			ELSE
+				eState := E_StateSequencer.PREP_PRINTING_HEX_7;
+			END_IF
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.PREP_PRINTING_HEX_7 : // Druckprozess gestartet (Hexapod auf Startposition fahren)
+	// =============================================================================
+		IF FC_Execute('GEO_LINE','LA 0 0 -305 0 0 0') THEN // Position 0 0 -105
+			IF bAbort THEN
+				eState := E_StateSequencer.ABORTED;
+			ELSE
+				eState := E_StateSequencer.READ_FILE;
+			END_IF
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.READ_FILE : // Zeile aus File lesen
+	// =============================================================================
+		IF bStopExtOnBlockEnd AND FC_WaitForFinish() THEN
+		// Extruder muss am Blockende gestoppt werden, obwohl gerade noch Zeilen für den nächsten Block eingelesen werden
+			eState := E_StateSequencer.STOP_EXTRUDING;
+		ELSIF NOT bPause AND NOT bAbort THEN
+		// Zeile lesen, wenn nicht Pause oder Abbruch
+			// Zeile lesen
+			IF bFirstRunState THEN 
+				fbReadFile(
+					sNetId := '',
+					hFile := hFile,
+					bExecute := TRUE, 
+					tTimeout := T#5S);
+			ELSE
+				fbReadFile(bExecute := FALSE);
+			END_IF
+			
+			// Fehler
+			IF fbReadFile.bError THEN
+			bError := TRUE;
+			nErrorID := 3003;
+			sErrorMsg := 'Datei: Fehler beim lesen der aktuellen Zeile';
+			END_IF
+			
+			// Ergebnis auslesen im 2. Cycle
+			IF NOT bFirstRunState AND NOT fbReadFile.bBusy AND NOT fbReadFile.bError THEN
+				IF NOT fbReadFile.bEOF THEN
+				// Nicht am Dateiende
+					sLine := fbReadFile.sLine;
+					eState := E_StateSequencer.EXECUTE_LINE;
+				ELSE
+				// Dateiende erreicht
+					sLine := '';
+					eState := E_StateSequencer.FINISHED;
+				END_IF
+			END_IF
+		ELSIF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF bPause THEN
+			eState := E_StateSequencer.PAUSE;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.EXECUTE_LINE : // Zeile ausführen
+	// =============================================================================
+		sLineTrimmed := FC_Trim(sLine);
+		// Unterscheidung Verfahrweg und Extrusion
+		IF sLineTrimmed = 'EXTRUDER_OFF' THEN
+			IF bBlockWithExt THEN 
+				eState := E_StateSequencer.EXTRUDER_OFF_1;
+			ELSE
+				// Zeile: EXTRUDER_OFF, obwohl Extruder bereits aus ist
+				eState := E_StateSequencer.READ_FILE;
+			END_IF
+		ELSIF sLineTrimmed = 'EXTRUDER_ON' THEN
+			IF NOT bBlockWithExt THEN 
+				eState := E_StateSequencer.EXTRUDER_ON_1;
+			ELSE
+				// Zeile: EXTRUDER_ON, obwohl Extruder bereits an ist
+				eState := E_StateSequencer.READ_FILE;
+			END_IF
+		ELSIF sLineTrimmed = '' THEN
+			eState := E_StateSequencer.READ_FILE;
+		ELSIF bProgBlockStart THEN
+			// Erste Zeile im Programmblock
+			eState := E_StateSequencer.WRITE_KOS;
+		ELSE
+			eState := E_StateSequencer.WRITE_PROG;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.WRITE_KOS : // Koordinatensystem in Programm an Hexabridge schreiben (wird zu Programmstart zurückgesetzt)
+	// =============================================================================	
+		// Erste Programmzeile: Koordinatensystem schreiben
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSE
+			IF FC_WriteProgLine('SK Extruder')THEN
+				eState := E_StateSequencer.WRITE_FEED;
+			END_IF
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.WRITE_FEED : // Vorschub in Programm an Hexabridge schreiben
+	// =============================================================================	
+		// Zweite Programmzeile: Vorschub schreiben (Extrudieren oder Verfahren)
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF bBlockWithExt THEN
+			IF FC_WriteProgLine(CONCAT('VF ',TO_STRING(fFeed * 60))) THEN
+				bProgBlockStart := FALSE;
+				eState := E_StateSequencer.WRITE_PROG;
+			END_IF
+		ELSE
+			IF FC_WriteProgLine(CONCAT('VF ',TO_STRING(fTravelFeed * 60)))THEN
+				bProgBlockStart := FALSE;
+				eState := E_StateSequencer.WRITE_PROG;
+			END_IF
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.WRITE_PROG : // Bewegnungszeile in Programm an Hexabridge schreiben
+	// =============================================================================	
+		// Programmzeile hinzufügen
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF FC_WriteProgLine(sLineTrimmed) THEN
+			eState := E_StateSequencer.READ_FILE;
+		END_IF
+	
+	
+	// =============================================================================
+	E_StateSequencer.EXTRUDER_ON_1 : // Extruder abschalten nach vorherigen Block
+	// =============================================================================
+		// Laufender Prgrammblock ist mit Extruder an (2 Segmente vor der aktuellen Zeile)
+		// Warte bis dieser fertig ist und schalte Extruder ab
+		// Starte dann den bis hier eingelsenen Block im Eilgang (Extruder aus)
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF FC_WaitForFinish() THEN
+			IF bStopExtOnBlockEnd THEN
+				bBackToExtruderOn2 := TRUE;
+				eState := E_StateSequencer.STOP_EXTRUDING;
+			ELSE
+				eState := E_StateSequencer.EXTRUDER_ON_2;
+			END_IF
+		END_IF
+		
+
+	// =============================================================================
+	E_StateSequencer.EXTRUDER_ON_2 : // Progammblock ausführen 	
+	// =============================================================================
+		// Bis jetzt geschriebener Progammblock ist also mit Extruder OFF
+		GVL_Hexabridge.bProgLineExecution := TRUE;
+		
+		IF FC_ExecuteNoWait('RUN_PROG_BUFFER','') THEN
+			// Extruder in nächsten Block an
+			bBlockWithExt := TRUE;
+			bProgBlockStart := TRUE;
+			eState := E_StateSequencer.READ_FILE;
+		END_IF
+		
+		
+	// =============================================================================	
+	E_StateSequencer.EXTRUDER_OFF_1 : // Warte bis vorheriger Block beendet
+	// =============================================================================
+		// Bis jetzt geschriebener Progammblock ist also mit Extruder ON --> Anschalten
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF FC_WaitForFinish() THEN
+			eState := E_StateSequencer.START_EXTRUDING;
+		END_IF
+		
+	// =============================================================================	
+	E_StateSequencer.START_EXTRUDING : // Extrusion starten
+	// =============================================================================
+		GVL_Extruder.Extruder.bStop := FALSE;
+		GVL_Extruder.Extruder.bStart := TRUE;
+		bPrintBedClear := FALSE;
+		
+		IF bAbort THEN
+			eState := E_StateSequencer.ABORTED;
+		ELSIF GVL_Extruder.Extruder.bExtruding THEN
+			bStopExtOnBlockEnd := TRUE;
+			eState := E_StateSequencer.EXTRUDER_OFF_2;
+		END_IF
+	
+	// =============================================================================	
+	E_StateSequencer.EXTRUDER_OFF_2 : // Progammblock ausführen
+	// =============================================================================
+		// Bis jetzt geschriebenen Progammblock ausführen
+		GVL_Hexabridge.bProgLineExecution := TRUE;
+		
+		IF FC_ExecuteNoWait('RUN_PROG_BUFFER','') THEN
+			// Extruder im nächsten Block aus
+			bBlockWithExt := FALSE;
+			bProgBlockStart := TRUE;
+			eState := E_StateSequencer.READ_FILE;
+		END_IF
+		
+		
+	// =============================================================================	
+	E_StateSequencer.STOP_EXTRUDING : // Extrusion stoppen, wenn Ende des Prgrammblocks erreicht
+	// =============================================================================
+		GVL_Extruder.Extruder.bStop := TRUE;
+		GVL_Extruder.Extruder.bStart := FALSE;
+		IF NOT GVL_Extruder.Extruder.bExtruding THEN
+			// Extruder gestoppt
+			bStopExtOnBlockEnd := FALSE;
+			IF bBackToExtruderOn2 THEN
+				bBackToExtruderOn2 := FALSE;
+				eState := E_StateSequencer.EXTRUDER_ON_2;
+			ELSIF bBackToPause THEN
+				bBackToPause := FALSE;
+				eState := E_StateSequencer.PAUSE;
+			ELSE
+				eState := E_StateSequencer.READ_FILE;	
+			END_IF
+		END_IF
+		
+
+	// =============================================================================
+	E_StateSequencer.PAUSE : // Druck pausiert
+	// =============================================================================
+		// Warte bis der Block ausgeführt wurde und schalte wenn nötig am Ende den Extruder ab
+		IF bStopExtOnBlockEnd THEN
+			IF FC_WaitForFinish() THEN
+				bBackToPause := TRUE;
+				eState := E_StateSequencer.STOP_EXTRUDING;
+			END_IF
+		END_IF
+
+		IF bResume THEN			
+			bPause := FALSE;
+			bResume := FALSE;
+			eState := E_StateSequencer.READ_FILE;
+		END_IF
+	
+	// =============================================================================
+	E_StateSequencer.ABORTED : // Druckprozess abgebrochen
+	// =============================================================================
+		GVL_Extruder.Extruder.bStopHeater := TRUE;
+		GVL_Extruder.Extruder.bStop := TRUE;
+		
+		GVL_HexaBridge.bProgLineSaved := FALSE;
+		GVL_HexaBridge.sProgLine := '';
+		GVL_HexaBridge.bProgLineReady := FALSE;
+		
+		IF FC_WaitForFinish() THEN
+			bAbort := FALSE;
+			eState := E_StateSequencer.SHUTDOWN;
+		END_IF
+		
+	// =============================================================================
+	E_StateSequencer.FINISHED : // Ende der Datei --> Letzten Programmblock ausführen
+	// =============================================================================
+		// Bis jetzt geschriebener ProgammBlock ist also mit Extruder OFF
+		GVL_Hexabridge.bProgLineExecution := TRUE;
+		
+		IF FC_Execute('RUN_PROG_BUFFER','') THEN
+			bFinished := TRUE;
+			eState := E_StateSequencer.SHUTDOWN;
+		END_IF
+			
+	// =============================================================================
+	E_StateSequencer.SHUTDOWN : // Herunterfahren
+	// =============================================================================
+		// Status
+		bReady := FALSE;
+	
+		// Schalte Extruder ab
+		GVL_Extruder.Extruder.bStopHeater := TRUE;
+		GVL_PrintingBed.PrintingBed.fSetTemp := 0.0;
+		
+		// Hexapod einfahren
+		IF NOT bError THEN
+			IF FC_Execute('GEO_LINE','PU') THEN
+				eState := E_StateSequencer.CLOSE_FILE;
+			END_IF
+		END_IF
+END_CASE;]]></ST>
+    </Implementation>
+    <Method Name="FC_Trim" Id="{20509fcb-865a-44bc-8d54-a58d81e23121}">
+      <Declaration><![CDATA[METHOD FC_Trim : STRING(255)
+VAR_INPUT
+	sString			: STRING(255);
+END_VAR
+VAR
+	sWithoutLF		: STRING(255);
+	sWithoutLFCR	: STRING(255);
+	sLF				: STRING(5)			:= '$N';
+	sCR				: STRING(5)			:= '$R';
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Entfernt Leerzeichen und Absätze
+FindAndDelete(
+	pSrcString		:= ADR(sString),
+	pDeleteString	:= ADR(sLF),
+	pDstString		:= ADR(sWithoutLF),
+	nDstSize		:= SIZEOF(sWithoutLF));
+	
+// FindAndDelete(
+// 	pSrcString		:= ADR(sWithoutLF),
+// 	pDeleteString	:= ADR(sCR),
+// 	pDstString		:= ADR(sWithoutLFCR),
+// 	nDstSize		:= SIZEOF(sWithoutLFCR));
+ 
+FC_Trim := F_LTRIM(F_RTRIM(sWithoutLF));]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_ProgramSequencer">
+      <LineId Id="3035" Count="16" />
+      <LineId Id="3583" Count="0" />
+      <LineId Id="3052" Count="12" />
+      <LineId Id="4263" Count="1" />
+      <LineId Id="3065" Count="3" />
+      <LineId Id="4663" Count="0" />
+      <LineId Id="4677" Count="31" />
+      <LineId Id="4664" Count="2" />
+      <LineId Id="3069" Count="14" />
+      <LineId Id="4435" Count="1" />
+      <LineId Id="3084" Count="1" />
+      <LineId Id="4629" Count="14" />
+      <LineId Id="3101" Count="10" />
+      <LineId Id="4268" Count="0" />
+      <LineId Id="3112" Count="3" />
+      <LineId Id="3918" Count="0" />
+      <LineId Id="4624" Count="4" />
+      <LineId Id="3920" Count="0" />
+      <LineId Id="3116" Count="36" />
+      <LineId Id="3155" Count="41" />
+      <LineId Id="4206" Count="0" />
+      <LineId Id="4204" Count="0" />
+      <LineId Id="3197" Count="14" />
+      <LineId Id="3659" Count="1" />
+      <LineId Id="3213" Count="9" />
+      <LineId Id="3224" Count="13" />
+      <LineId Id="3239" Count="0" />
+      <LineId Id="3658" Count="0" />
+      <LineId Id="3657" Count="0" />
+      <LineId Id="3240" Count="7" />
+      <LineId Id="4177" Count="0" />
+      <LineId Id="3248" Count="0" />
+      <LineId Id="3250" Count="4" />
+      <LineId Id="4159" Count="1" />
+      <LineId Id="4154" Count="0" />
+      <LineId Id="4207" Count="1" />
+      <LineId Id="4161" Count="1" />
+      <LineId Id="4164" Count="4" />
+      <LineId Id="4170" Count="4" />
+      <LineId Id="4176" Count="0" />
+      <LineId Id="4155" Count="0" />
+      <LineId Id="4178" Count="0" />
+      <LineId Id="4180" Count="1" />
+      <LineId Id="4179" Count="0" />
+      <LineId Id="4183" Count="0" />
+      <LineId Id="4192" Count="0" />
+      <LineId Id="4184" Count="5" />
+      <LineId Id="4209" Count="0" />
+      <LineId Id="4191" Count="0" />
+      <LineId Id="4182" Count="0" />
+      <LineId Id="4156" Count="0" />
+      <LineId Id="4200" Count="1" />
+      <LineId Id="4196" Count="0" />
+      <LineId Id="4198" Count="0" />
+      <LineId Id="4265" Count="0" />
+      <LineId Id="4199" Count="0" />
+      <LineId Id="4267" Count="0" />
+      <LineId Id="4197" Count="0" />
+      <LineId Id="4202" Count="1" />
+      <LineId Id="4157" Count="0" />
+      <LineId Id="3255" Count="4" />
+      <LineId Id="4322" Count="0" />
+      <LineId Id="3260" Count="5" />
+      <LineId Id="3923" Count="0" />
+      <LineId Id="3266" Count="0" />
+      <LineId Id="3268" Count="2" />
+      <LineId Id="3569" Count="1" />
+      <LineId Id="3567" Count="0" />
+      <LineId Id="3571" Count="4" />
+      <LineId Id="3581" Count="1" />
+      <LineId Id="3910" Count="0" />
+      <LineId Id="3912" Count="4" />
+      <LineId Id="3911" Count="0" />
+      <LineId Id="3568" Count="0" />
+      <LineId Id="3282" Count="9" />
+      <LineId Id="3646" Count="0" />
+      <LineId Id="3977" Count="8" />
+      <LineId Id="3975" Count="1" />
+      <LineId Id="3648" Count="8" />
+      <LineId Id="3647" Count="0" />
+      <LineId Id="3292" Count="0" />
+      <LineId Id="3586" Count="8" />
+      <LineId Id="3584" Count="1" />
+      <LineId Id="3293" Count="19" />
+      <LineId Id="3779" Count="0" />
+      <LineId Id="3781" Count="8" />
+      <LineId Id="3780" Count="0" />
+      <LineId Id="4438" Count="0" />
+      <LineId Id="4440" Count="8" />
+      <LineId Id="4439" Count="0" />
+      <LineId Id="3313" Count="3" />
+      <LineId Id="3562" Count="0" />
+      <LineId Id="3564" Count="0" />
+      <LineId Id="3320" Count="1" />
+      <LineId Id="3535" Count="0" />
+      <LineId Id="3322" Count="10" />
+      <LineId Id="3565" Count="0" />
+      <LineId Id="3333" Count="5" />
+      <LineId Id="3566" Count="0" />
+      <LineId Id="3339" Count="6" />
+      <LineId Id="3578" Count="0" />
+      <LineId Id="3348" Count="2" />
+      <LineId Id="3352" Count="37" />
+      <LineId Id="3716" Count="1" />
+      <LineId Id="3395" Count="1" />
+      <LineId Id="3398" Count="3" />
+      <LineId Id="3843" Count="15" />
+      <LineId Id="3841" Count="1" />
+      <LineId Id="3402" Count="4" />
+      <LineId Id="3715" Count="0" />
+      <LineId Id="3714" Count="0" />
+      <LineId Id="3407" Count="9" />
+      <LineId Id="3719" Count="1" />
+      <LineId Id="3417" Count="0" />
+      <LineId Id="4380" Count="0" />
+      <LineId Id="3419" Count="1" />
+      <LineId Id="3422" Count="2" />
+      <LineId Id="4381" Count="0" />
+      <LineId Id="3426" Count="5" />
+      <LineId Id="4045" Count="1" />
+      <LineId Id="3432" Count="11" />
+      <LineId Id="3721" Count="1" />
+      <LineId Id="3444" Count="6" />
+      <LineId Id="3452" Count="0" />
+      <LineId Id="3662" Count="0" />
+      <LineId Id="3992" Count="1" />
+      <LineId Id="3725" Count="1" />
+      <LineId Id="3453" Count="0" />
+      <LineId Id="3455" Count="0" />
+      <LineId Id="3532" Count="0" />
+      <LineId Id="3456" Count="5" />
+      <LineId Id="4047" Count="1" />
+      <LineId Id="3462" Count="0" />
+      <LineId Id="3534" Count="0" />
+      <LineId Id="3463" Count="9" />
+      <LineId Id="3661" Count="0" />
+      <LineId Id="3473" Count="0" />
+      <LineId Id="3556" Count="0" />
+      <LineId Id="3474" Count="4" />
+      <LineId Id="3555" Count="0" />
+      <LineId Id="3554" Count="0" />
+      <LineId Id="3553" Count="0" />
+      <LineId Id="3479" Count="6" />
+      <LineId Id="3543" Count="1" />
+      <LineId Id="3547" Count="4" />
+      <LineId Id="3487" Count="0" />
+      <LineId Id="3536" Count="0" />
+      <LineId Id="3489" Count="0" />
+      <LineId Id="3495" Count="0" />
+      <LineId Id="4102" Count="0" />
+      <LineId Id="3496" Count="5" />
+      <LineId Id="3503" Count="0" />
+      <LineId Id="4324" Count="0" />
+      <LineId Id="3986" Count="0" />
+      <LineId Id="3989" Count="1" />
+      <LineId Id="3988" Count="0" />
+      <LineId Id="3987" Count="0" />
+      <LineId Id="3504" Count="0" />
+      <LineId Id="4325" Count="0" />
+      <LineId Id="3505" Count="6" />
+      <LineId Id="4049" Count="1" />
+      <LineId Id="3512" Count="0" />
+      <LineId Id="4323" Count="0" />
+      <LineId Id="3513" Count="18" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_ProgramSequencer.FC_Trim">
+      <LineId Id="26" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="16" Count="1" />
+      <LineId Id="19" Count="1" />
+      <LineId Id="22" Count="3" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

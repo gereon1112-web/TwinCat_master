@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FC_ExtrusionCalculations" Id="{d487f410-4eda-48a3-a21c-1e5e848b8268}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FC_ExtrusionCalculations : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	fCalcMaxFlow		: LREAL;
+	fCalcMaxSpeed		: LREAL;
+	fCalcFlowRate		: LREAL;
+	fCalcMotorRPM		: LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// =============================================================================
+// Eingaben begrenzen
+// =============================================================================
+GVL_ParameterExtruder.fSpeedOverride	:= LIMIT(0, GVL_ParameterExtruder.fSpeedOverride, 100);
+GVL_ParameterExtruder.fSafetyMargin		:= LIMIT(0, GVL_ParameterExtruder.fSafetyMargin, 100);
+
+// =============================================================================
+// Formeln nach https://dyzedesign.com/2024/05/flow-to-rpm-factor-optimize-your-3d-printing-with-pellet-extruders/	
+// =============================================================================
+fCalcMaxFlow	:= 	GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fMaxFlowRate 
+					+ TO_LREAL(GVL_ParameterExtruder.nNozzleSize);
+
+fCalcMaxSpeed	:= 	fCalcMaxFlow
+					* LIMIT(0, GVL_ParameterExtruder.fSafetyMargin, 100) / 100
+					* LIMIT(0, GVL_ParameterExtruder.fSpeedOverride, 100) / 100
+					/ (GVL_ParameterExtruder.fLayerHeight
+					* (GVL_ParameterExtruder.fLayerWidth - 0.215 * GVL_ParameterExtruder.fLayerHeight));
+					
+										
+fCalcFlowRate 	:=	GVL_ParameterExtruder.fLayerHeight
+					* (GVL_ParameterExtruder.fLayerWidth - 0.215 * GVL_ParameterExtruder.fLayerHeight)
+					* fCalcMaxSpeed;
+
+fCalcMotorRPM	:=	LIMIT (0, GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fFlow2RPM
+					* GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fNozzleSizeCoef
+					* fCalcFlowRate, PAR_Extruder.C_MAX_RPM_SCREW_FULL * PAR_Extruder.C_GEAR_RATIO);
+
+// =============================================================================
+// Rückrechnung wenn maximale RPM des Extruders erreicht (Schraube max. 50 RPM)
+// =============================================================================
+IF GVL_ParameterExtruder.fMotorRPM = PAR_Extruder.C_MAX_RPM_SCREW_FULL * PAR_Extruder.C_GEAR_RATIO THEN
+	fCalcFlowRate 	:= 	PAR_Extruder.C_MAX_RPM_SCREW_FULL * PAR_Extruder.C_GEAR_RATIO 
+						/ GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fFlow2RPM
+						/ GVL_ParameterExtruder.aMaterialSettings[GVL_ParameterExtruder.nMaterial].fNozzleSizeCoef;
+										
+	fCalcMaxSpeed	:= 	GVL_ParameterExtruder.fFlowRate	
+						/ GVL_ParameterExtruder.fLayerHeight
+						/ (GVL_ParameterExtruder.fLayerWidth - 0.215 * GVL_ParameterExtruder.fLayerHeight);					
+END_IF
+
+// =============================================================================
+// Werte schreiben
+// =============================================================================
+GVL_ParameterExtruder.fMaximumFlow 		:= fCalcMaxFlow;
+GVL_ParameterExtruder.fMaximumSpeed 	:= fCalcMaxSpeed;
+GVL_ParameterExtruder.fFlowRate 		:= fCalcFlowRate;
+GVL_ParameterExtruder.fMotorRPM			:= fCalcMotorRPM;						]]></ST>
+    </Implementation>
+    <LineIds Name="FC_ExtrusionCalculations">
+      <LineId Id="74" Count="45" />
+      <LineId Id="46" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

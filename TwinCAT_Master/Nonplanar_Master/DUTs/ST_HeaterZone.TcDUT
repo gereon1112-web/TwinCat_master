@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_HeaterZone" Id="{f052addb-81f3-4589-924c-a8b0faa8331d}">
+    <Declaration><![CDATA[TYPE ST_HeaterZone :
+STRUCT
+    // Grunddaten
+    bEnabled        : BOOL;                 // Zone aktiv
+	fActualTemp   	: LREAL;             	// Isttemperatur [°C]
+    fPID_Output     : LREAL;                // PID-Stellgröße [0..100%]
+    bAtTemp         : BOOL;                 // Temperatur erreicht
+	bErrorReset		: BOOL;					// Fehler zurücksetzen
+    bError        	: BOOL;					// Fehler
+    nErrorID      	: UDINT;
+    sErrorMsg 		: STRING(80);
+END_STRUCT
+END_TYPE
+
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

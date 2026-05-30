@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_Extruder" Id="{b036e722-566c-4769-a1fd-4d2cf706f655}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	Extruder		: ST_ExtruderControl;
+	HeaterTop		: ST_HeaterZone;
+	HeaterMiddle	: ST_HeaterZone;	
+	HeaterNozzle	: ST_HeaterZone;
+	ExtruderMotor	: ST_MotorControl;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

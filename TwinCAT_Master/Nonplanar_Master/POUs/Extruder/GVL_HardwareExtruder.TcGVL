@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_HardwareExtruder" Id="{1759e20c-e0f6-4812-aef0-fb6fb9578fa6}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	// EL3204 – RTD-Temperatureingänge (Heizelemente)
+	I_TempRaw_Top  		AT %I* : INT;  
+	I_TempRaw_Middle 	AT %I* : INT;   
+	I_TempRaw_Nozzle  	AT %I* : INT;    
+
+	// EL2004 – Digitale Ausgänge (Heizelemente)
+	Q_SSR_Top      		AT %Q* : BOOL;   
+	Q_SSR_Middle    	AT %Q* : BOOL;   
+	Q_SSR_Nozzle    	AT %Q* : BOOL;  
+	Q_Activate_Heaters	AT %Q* : BOOL;
+
+	// EL2521 – Pulsausgabe (Stepper Motor Driver)
+	Q_Stepper	  		AT %Q* : ST_Hardware_QStepper;		
+	I_Stepper  			AT %I* : ST_Hardware_IStepper;
+	
+	// EL1002 – Digitale Eingänge
+	I_PelletsEmpty      AT %I* : BOOL;    	//Materialzuführung leer
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

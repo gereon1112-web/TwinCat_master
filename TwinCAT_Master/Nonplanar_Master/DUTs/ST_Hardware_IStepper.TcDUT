@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_Hardware_IStepper" Id="{d66ac957-d265-4950-8b41-a4ecd901c1bf}">
+    <Declaration><![CDATA[TYPE ST_Hardware_IStepper :
+STRUCT
+	bStallguardActive 	: BOOL;		// Stallguard nicht aktive --> Motor überlastet
+	bError				: BOOL;		// Fehler 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

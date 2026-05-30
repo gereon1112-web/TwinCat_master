@@ -1,0 +1,269 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <EnumerationTextList Name="E_StateSequencer" Id="{86bc2c5b-3169-4949-a177-892e2e46c23f}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_StateSequencer :
+(
+	OFF					:= 0,
+	INIT_1				:= 10,
+	INIT_2				:= 11,
+	INIT_3				:= 12,
+	HOMING_1			:= 90,
+	HOMING_2			:= 91,
+	
+	IDLE				:= 100,
+	OPEN_FILE			:= 110,
+	CLOSE_FILE			:= 120,
+	CHANGE_MATERIAL_1	:= 130,
+	CHANGE_MATERIAL_2	:= 131,
+	CHANGE_MATERIAL_3	:= 132,
+	
+	READY				:= 200,
+	
+	PREP_PRINTING		:= 300,
+	PREP_PRINTING_HEX_1	:= 301,
+	PREP_PRINTING_HEX_2	:= 302,
+	PREP_PRINTING_HEX_3	:= 303,
+	PREP_PRINTING_HEX_4 := 304,
+	PREP_PRINTING_EXT	:= 305,
+	PREP_PRINTING_HEX_5	:= 306,
+	PREP_PRINTING_HEX_6	:= 307,
+	PREP_PRINTING_HEX_7	:= 308,
+	
+	READ_FILE			:= 310,
+	EXECUTE_LINE		:= 320,
+	
+	WRITE_KOS			:= 330,
+	WRITE_FEED			:= 331,
+	WRITE_PROG			:= 335,
+	
+	EXTRUDER_ON_1		:= 340,
+	EXTRUDER_ON_2		:= 341,
+	
+	EXTRUDER_OFF_1		:= 350,
+	START_EXTRUDING		:= 351,
+	EXTRUDER_OFF_2		:= 352,
+	
+	STOP_EXTRUDING		:= 360,
+	
+	PAUSE				:= 390,
+	
+	ABORTED				:= 400,
+	
+	FINISHED			:= 500,
+	
+	SHUTDOWN			:= 600
+);
+END_TYPE]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"OFF"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"INIT_1"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"INIT_2"</v>
+              <v n="TextDefault">"11"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"INIT_3"</v>
+              <v n="TextDefault">"12"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"HOMING_1"</v>
+              <v n="TextDefault">"90"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"HOMING_2"</v>
+              <v n="TextDefault">"91"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"IDLE"</v>
+              <v n="TextDefault">"100"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"OPEN_FILE"</v>
+              <v n="TextDefault">"110"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CLOSE_FILE"</v>
+              <v n="TextDefault">"120"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CHANGE_MATERIAL_1"</v>
+              <v n="TextDefault">"130"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CHANGE_MATERIAL_2"</v>
+              <v n="TextDefault">"131"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CHANGE_MATERIAL_3"</v>
+              <v n="TextDefault">"132"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"READY"</v>
+              <v n="TextDefault">"200"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING"</v>
+              <v n="TextDefault">"300"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_1"</v>
+              <v n="TextDefault">"301"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_2"</v>
+              <v n="TextDefault">"302"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_3"</v>
+              <v n="TextDefault">"303"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_4"</v>
+              <v n="TextDefault">"304"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_EXT"</v>
+              <v n="TextDefault">"305"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_5"</v>
+              <v n="TextDefault">"306"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_6"</v>
+              <v n="TextDefault">"307"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PREP_PRINTING_HEX_7"</v>
+              <v n="TextDefault">"308"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"READ_FILE"</v>
+              <v n="TextDefault">"310"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EXECUTE_LINE"</v>
+              <v n="TextDefault">"320"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WRITE_KOS"</v>
+              <v n="TextDefault">"330"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WRITE_FEED"</v>
+              <v n="TextDefault">"331"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WRITE_PROG"</v>
+              <v n="TextDefault">"335"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EXTRUDER_ON_1"</v>
+              <v n="TextDefault">"340"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EXTRUDER_ON_2"</v>
+              <v n="TextDefault">"341"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EXTRUDER_OFF_1"</v>
+              <v n="TextDefault">"350"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"START_EXTRUDING"</v>
+              <v n="TextDefault">"351"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EXTRUDER_OFF_2"</v>
+              <v n="TextDefault">"352"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"STOP_EXTRUDING"</v>
+              <v n="TextDefault">"360"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PAUSE"</v>
+              <v n="TextDefault">"390"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"ABORTED"</v>
+              <v n="TextDefault">"400"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FINISHED"</v>
+              <v n="TextDefault">"500"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"SHUTDOWN"</v>
+              <v n="TextDefault">"600"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{15776be6-b7bb-41da-8e71-fda00e0f0d79}</v>
+          <v n="GuidReInit">{3dc666e4-023a-4ee1-bfe6-e476f03ee32c}</v>
+          <v n="GuidExitX">{293cf7f3-3f52-4a4e-8e4d-6d8f718bda34}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_ProgramSequencer" Id="{37fb20f5-60c7-4f60-ac75-a117697f06cf}">
+    <Declaration><![CDATA[TYPE ST_ProgramSequencer :
+STRUCT
+	sPath			: STRING(MAX_STRING_LENGTH);// Pfad des Speicherorts des GeoCodes
+	
+	// Statusinformationen
+	bReady 			: BOOL;						// Betriebsbereit
+	bPrinting 		: BOOL;						// Druckprozess läuft
+	bFinished		: BOOL;						// Druck abgeschlossen
+	bError        	: BOOL;						// Fehler
+    nErrorID      	: UDINT;
+    sErrorMsg 		: STRING(80);
+	
+	// Steuersignale
+	bHeatersEnabled	: BOOL;						// Heizelemente aktiviert --> später Safety Verknüpfung
+	bPrintBedClear	: BOOL;						// Druckbett frei?
+	bChangeMaterial	: BOOL;						// Extruder starten für Materialwechsel
+	bChangeMaterialFinished : BOOL;				// Materialwechsel abschliesen und Extruder anhalten
+	bLoadFile		: BOOL;						// File laden
+	bCloseFile		: BOOL;						// File schließen
+	bStart 			: BOOL;						// Start-Befehl
+	bAbort 			: BOOL;						// Drucken abbrechen
+	bPause          : BOOL;						// Pausiert Druckprozess
+	bResume         : BOOL;						// Druckprozess fortsetzen
+	bErrorReset 	: BOOL;						// Reset-Befehl für Fehler
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

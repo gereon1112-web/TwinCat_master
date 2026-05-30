@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_PrintingBed" Id="{40b7606b-d497-48ff-b6b5-f0d9dac24e3d}">
+    <Declaration><![CDATA[TYPE ST_PrintingBed :
+STRUCT
+	fSetTemp		: REAL;			// Solltemperatur Druckbett
+	fActualTemp		: REAL;			// Isttemperatur Druckbett
+	bAtTemp			: BOOL;			// Solltemperatur erreicht (0.5°C Toleranz)
+	bErrorReset		: BOOL;
+	bError        	: BOOL;			// Fehler
+    nErrorID      	: UDINT;
+    sErrorMsg 		: STRING(80);
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

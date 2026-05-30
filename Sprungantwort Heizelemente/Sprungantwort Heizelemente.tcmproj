@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{ff18ff45-cd16-466c-9624-ead6e9263c5a}</ProjectGuid>
+    <AssemblyName>Sprungantwort Heizelemente</AssemblyName>
+    <Name>Sprungantwort Heizelemente</Name>
+    <RootNamespace>Sprungantwort Heizelemente</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Scope Project1.tcscopex">
+      <SubType>Content</SubType>
+    </Content>
+  </ItemGroup>
+</Project>

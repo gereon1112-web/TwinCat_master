@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_MaterialSettings" Id="{9d269a30-2101-4304-995e-9d85a444298f}">
+    <Declaration><![CDATA[TYPE ST_MaterialSettings :
+STRUCT
+	sMaterial		: STRING(80);		// Materialname	
+
+	fTempPrintingBed: REAL	:= 0;		// <120 [°C]
+	
+	fTempTop		: LREAL	:= 0;		// <400 [°C]
+	fTempMiddle		: LREAL	:= 0;		// <400 [°C]
+	fTempNozzle		: LREAL	:= 0;		// <400 [°C]
+	
+	// https://docs.dyzedesign.com/pulsar.html#flow-to-rpm
+	
+	fMaxFlowRate	: LREAL := 0;		// Maximaler Volumenstrom [mm^3/s]
+	fFlow2RPM		: LREAL := 0;		// Flow to RPM Ratio
+	fNozzleSizeCoef	: LREAL := 1;		// Koeffizent Flow2RPM (abhängig von Material und Düse)
+END_STRUCT	
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

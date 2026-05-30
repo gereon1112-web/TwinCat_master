@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="E_StateExtruder" Id="{d2c46256-ea74-4699-a6e0-c5a38513f871}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_StateExtruder :
+(
+	OFF			:= 0,
+	INIT		:= 10,
+	IDLE		:= 100,
+	HEATING		:= 200,
+	READY		:= 300,
+	PRINTING	:= 310,
+	SHUTDOWN	:= 400
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

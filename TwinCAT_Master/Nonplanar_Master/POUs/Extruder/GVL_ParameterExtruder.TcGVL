@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_ParameterExtruder" Id="{8395cded-f4ca-4dc1-9603-f1e230845475}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL PERSISTENT // Speichern der Online-Veränderungen
+	// Mehr Informationen unter: https://docs.dyzedesign.com/pulsar.html#slicer-and-print-settings	
+
+	// Materialabhängige Eigenschaften
+	{attribute 'TcInitOnReset'} // Neuladen bei Kalt Reset (oben rechts)
+	aMaterialSettings	: ARRAY[1..20] OF ST_MaterialSettings := [
+			(sMaterial := 'Test-Material', 	fTempPrintingBed := 30, fTempTop := 201, 	fTempMiddle := 201, fTempNozzle := 201,	fMaxFlowRate := 600, fFlow2RPM := 0.65, fNozzleSizeCoef := 1.10),
+			(sMaterial := 'PETG', 			fTempPrintingBed := 90, fTempTop := 101, 	fTempMiddle := 241, fTempNozzle := 231, fMaxFlowRate := 592, fFlow2RPM := 0.75,	fNozzleSizeCoef := 1.10),
+			(sMaterial := 'PLA', 			fTempPrintingBed := 60, fTempTop := 101, 	fTempMiddle := 221, fTempNozzle := 211, fMaxFlowRate := 607, fFlow2RPM := 0.55,	fNozzleSizeCoef := 1.35),
+			(sMaterial := 'PC-ABS-CF', 		fTempPrintingBed := 110,fTempTop := 301, 	fTempMiddle := 301, fTempNozzle := 301, fMaxFlowRate := 700, fFlow2RPM := 0.58, fNozzleSizeCoef := 1.10),
+			(sMaterial := 'ABS', 			fTempPrintingBed := 90,	fTempTop := 131	, 	fTempMiddle := 231, fTempNozzle := 231, fMaxFlowRate := 658, fFlow2RPM := 0.65, fNozzleSizeCoef := 1.05), 
+			15(())]; // Speichert materialabhängige Extrudereinstellungen (neues Material: Zeile oben kopieren, einfügen und Zähler reduzieren)		
+	{attribute 'TcInitOnReset'} // Neuladen bei Kalt Reset (oben rechts)
+	nMaterial		: UINT				:= 5;			// Aktuell gewähltes Material
+		
+	nNozzleSize		: E_NozzleSizeFlow	:= E_NozzleSizeFlow.vier; // Düsendurchmesser [mm] als Wort entspricht der Reduzierung des Durchflusses [mm^3/s]
+	fLayerWidth     : LREAL 			:= 5.0;			// Schichtbreite [mm]
+	fLayerHeight    : LREAL 			:= 1.0;			// Schichthöhe [mm]
+	fSpeedOverride  : LREAL 			:= 10.0; 		// [%] Geschwindigkeits-Override in Prozent der Maximalgeschwindigkeit
+	fSafetyMargin	: LREAL				:= 75.0;		// [%] Sicherheitsfaktor für die maximale Druckgeschwindigkeit (75%)
+	
+	// Berechnete Werte - siehe FC_ExtrusionCalculation
+	fMaximumFlow	: LREAL				:= 0;			// Maximaler Durchfluss mit Abzug der Beschränkungen durch die Düse [mm^3/s]
+	fMaximumSpeed	: LREAL				:= 0;			// Maximale Druckgeschwindigkeit [mm/s]
+	fFlowRate		: LREAL				:= 0;			// Durchfluss [mm^3/s]
+	fMotorRPM		: LREAL				:= 0;			// Notwendige RPM des Motors
+	
+	// Verfahrgeschwindigkeit
+	fTravelSpeed	: LREAL				:= 100;			// Verfahrgeschwindigkeit [mm/s]
+	
+	// PID-Regler Heizelemente
+	WarmupHeaterTop		: ST_HeaterZone_Parameter;
+	WarmupHeaterMiddle	: ST_HeaterZone_Parameter;	
+	WarmupHeaterNozzle	: ST_HeaterZone_Parameter;
+	PrintingHeaterTop	: ST_HeaterZone_Parameter;
+	PrintingHeaterMiddle: ST_HeaterZone_Parameter;	
+	PrintingHeaterNozzle: ST_HeaterZone_Parameter;
+	
+	tRampTime		: TIME				:= T#3M;		// Länge der Rampe bei Sprüngen
+	nPIDCycleFactor	: UINT  			:= 10;			// PID rechnet alle n Zyklen
+    tPWM_Period     : TIME  			:= T#3S;        // PWM-Periode SSR
+    fAtTempTolerance: LREAL 			:= 50.0;         // Toleranz für Signal Temperatur erreicht [°C]
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_Hardware_QStepper" Id="{60b02d9d-5c68-4c95-9cc8-ff563437de58}">
+    <Declaration><![CDATA[TYPE ST_Hardware_QStepper :
+STRUCT
+	nFrequencyValue		: INT;		// Frequenzwert (Bewegunggeschwindigkeit und Richtung) !muss INT sein, nicht UINT!
+	nDirection			: INT;		// Legt Bewegungsrichtung fest (16383 entspricht 5V --> gegen den urzeigersinn --> Extrusion, alternativ 0)
+	nEnable				: INT;		// Deaktivert Motor wenn aktiv (16383 entspricht 5V --> Motor aus, alternativ 0 entspricht 0V --> Motor an) 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

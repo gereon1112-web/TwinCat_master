@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="PAR_Extruder" Id="{472ec212-73ab-44a7-821e-7ac2ebb12ce4}" ParameterList="True">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	// Nicht bearbeiten!
+	// Quelle: https://docs.dyzedesign.com/pulsar.html#marlin-firmware	
+
+	// Temperatur
+    C_MAX_SET_TEMP		: LREAL := 400.0;		// Maximale Setzbare Temperaturgrenze [°C]
+    C_MIN_SET_TEMP		: LREAL := 0;			// Minimal Setzbare Temperaturgrenze [°C]
+	C_MAX_SENSOR_TEMP	: LREAL := 505.0;		// Maximale Plausibilitätsgrenze Sensoren [°C]
+    C_MIN_SENSOR_TEMP	: LREAL := 0;			// Minimale Plausibilitätsgrenze Sensoren [°C]
+	C_MAX_TEMP			: LREAL := 500.0;		// Maximaltemperatur Extruder [°C]
+	
+	// Stepper Driver 
+	C_MAX_RPM_SCREW		: LREAL := 60;			// Maximale zulässige RPM --> Anpassung: EL2521 Grundfrequenz
+	C_MAX_RPM_SCREW_FULL: LREAL := 50;			// Maximale zulässige RPM mit Material
+	C_GEAR_RATIO		: LREAL := 11.46;		// Übersetzung Motor --> Schraube
+	C_STEPPER_DIR		: BOOL	:= FALSE;		// Drehrichtung
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

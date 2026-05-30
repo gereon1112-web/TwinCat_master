@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FC_WriteProgLine" Id="{adf96a24-e6c6-463b-91f4-0a8a4fb38158}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FC_WriteProgLine : BOOL
+VAR_INPUT
+	sLine			: STRING(MAX_STRING_LENGTH);	// GeoCode Befehl
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF GVL_HexaBridge.bHexConnected AND GVL_HexaBridge.bBridgeRunning THEN
+	// Senden des Befehls
+	IF GVL_HexaBridge.sProgLine = '' AND NOT GVL_HexaBridge.bProgLineReady AND GVL_HexaBridge.bProgLineSaved
+	AND NOT GVL_HexaBridge.bExecute AND NOT GVL_HexaBridge.bProgLineExecution THEN
+		GVL_HexaBridge.bProgLineSaved := FALSE;
+		GVL_HexaBridge.sProgLine := sLine;
+		GVL_HexaBridge.bProgLineReady := TRUE;
+		FC_WriteProgLine := TRUE;
+	END_IF
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FC_WriteProgLine">
+      <LineId Id="9" Count="2" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

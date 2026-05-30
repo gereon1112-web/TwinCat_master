@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL_Instances" Id="{b0503262-2b2e-4edd-8645-10f06d8a7f9b}">
+    <Declaration><![CDATA[VAR_GLOBAL
+	// Befehlsverarbeitung
+	Sequencer			: FB_ProgramSequencer;
+	
+	// Druckbett
+	PrintingBed			: FB_PrintingBedSync;
+
+	// Extruder
+	ExtruderControl		: FB_ExtruderControl; 
+	
+	// Heizelemente
+	HeaterTop			: FB_HeaterZone;
+	HeaterMiddle		: FB_HeaterZone;
+	HeaterNozzle		: FB_HeaterZone;
+	
+	//Motor
+	ExtruderMotor		: FB_MotorControl;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>
